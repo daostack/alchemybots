@@ -1,3 +1,4 @@
+require('dotenv').config();
 let network = process.env.NETWORK
 let privateKey = process.env.PRIVATE_KEY
 let scanFromBlock = process.env.SCAN_FROM_BLOCK
