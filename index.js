@@ -40,7 +40,7 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
     }
 
     // If entered into Boosted or Quiet Ending state
-    if (proposalState === 5 || proposalState === 6) {
+    if ((proposalState === 5 || proposalState === 6) && (proposal.state == 5 || proposal.state === 6)) {
       console.log('Proposal: ' + proposalId + ' has entered Boosted/ QEP phase. Timer for expire closing started.')
 
       // Setup timer for the expiration time
