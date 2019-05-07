@@ -29,6 +29,7 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
     let proposalId = events.returnValues._proposalId
     let proposalState = events.returnValues._proposalState
     let proposal = await genesisProtocol.methods.proposals(proposalId).call()
+    let boostedTime = (await genesisProtocol.methods.getProposalTimes(proposalId).call())[1].toNumber()
     let parameters = await genesisProtocol.methods.parameters(proposal.paramsHash).call()
 
     // Clear past timeouts if existed
@@ -43,6 +44,8 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
       console.log('Proposal: ' + proposalId + ' has entered Boosted/ QEP phase. Timer for expire closing started.')
 
       // Setup timer for the expiration time
+      let timerDelay = (proposalState === 5 ? parameters.boostedVotePeriodLimit.toNumber() * 1000 : parameters.quietEndingPeriod.toNumber() * 1000) + boostedTime * 1000 - Date.now()
+      
       activeTimers[proposalId] = setTimeout(async () => {
         activeTimers[proposalId] = undefined
         console.log(
@@ -73,7 +76,7 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
             }
           })
         }
-      }, proposalState === 5 ? parameters.boostedVotePeriodLimit.toNumber() * 1000 : parameters.quietEndingPeriod.toNumber() * 1000)
+      }, timerDelay)
     }
   }
 }
