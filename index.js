@@ -30,7 +30,7 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
     let proposalState = events.returnValues._proposalState
     let proposal = await genesisProtocol.methods.proposals(proposalId).call()
     let boostedTime = (await genesisProtocol.methods.getProposalTimes(proposalId).call())[1].toNumber()
-    let parameters = await genesisProtocol.methods.parameters(proposal.paramsHash).call()
+    let boostingPeriod = proposal.currentBoostedVotePeriodLimit.toNumber()
 
     // Clear past timeouts if existed
     if (activeTimers[proposalId] !== undefined) {
@@ -41,9 +41,13 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
 
     // If entered into Boosted or Quiet Ending state
     if ((proposalState === 5 || proposalState === 6) && (proposal.state == 5 || proposal.state === 6)) {
-      let timerDelay = (proposalState === 5 ? parameters.boostedVotePeriodLimit.toNumber() * 1000 : parameters.quietEndingPeriod.toNumber() * 1000) + boostedTime * 1000 - Date.now()
+      let timerDelay = (boostingPeriod + boostedTime) * 1000 - Date.now()
+      if (timerDelay < 0) {
+        timerDelay = 0
+      }
+
       console.log('Proposal: ' + proposalId + ' entered ' +
-        (proposalState === 5 ? 'Boosted' : 'Quiet Ending') + ' Phase. Expiration timer has been set to: ' + timerDelay)
+        (proposalState === 5 ? 'Boosted' : 'Quiet Ending') + ' Phase. Expiration timer has been set to: ' + (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now"))
 
       // Setup timer for the expiration time
       
@@ -54,7 +58,7 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
         // Check if can close the proposal as expired and claim the bounty
         let failed = false
         let expirationCallBounty = await genesisProtocol.methods.executeBoosted(proposalId).call().catch((error) => {
-          console.log('Could not execute Proposal: ' + proposalId + '. error returned: ' + extractJSON(error.toString())[0].message)
+          console.log('Could not call execute Proposal: ' + proposalId + '. error returned: ' + extractJSON(error.toString())[0].message)
           failed = true
         })
 
@@ -68,7 +72,7 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
             if (!error) {
               console.log('Proposal: ' + proposalId + ' has expired and was successfully executed: ' + transactionHash + '\nReward received for execution: ' + web3.utils.fromWei(expirationCallBounty.toString()))
             } else {
-              console.log('Could not execute Proposal: ' + proposalId)
+              console.log('Could not execute Proposal: ' + proposalId + '. error returned: ' + extractJSON(error.toString())[0].message)
             }
           })
         }
@@ -101,4 +105,18 @@ function extractJSON (str) {
     } while (firstClose > firstOpen)
     firstOpen = str.indexOf('{', firstOpen + 1)
   } while (firstOpen !== -1)
+}
+
+// Get timer delay as readable time
+function convertMillisToTime(millis){
+  let delim = " ";
+  let hours = Math.floor(millis / (1000 * 60 * 60));
+  millis -= hours * (1000 * 60 * 60)
+  let minutes = Math.floor(millis / (1000 * 60));
+  millis -= minutes * (1000 * 60)
+  let seconds = Math.floor(millis / 1000);
+  hours = hours < 10 ? '0' + hours : hours;
+  minutes = minutes < 10 ? '0' + minutes : minutes;
+  seconds = seconds < 10 ? '0' + seconds : seconds;
+  return hours + 'h'+ delim + minutes + 'm' + delim + seconds + 's';
 }
