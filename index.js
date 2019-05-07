@@ -41,19 +41,15 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
 
     // If entered into Boosted or Quiet Ending state
     if ((proposalState === 5 || proposalState === 6) && (proposal.state == 5 || proposal.state === 6)) {
-      console.log('Proposal: ' + proposalId + ' has entered Boosted/ QEP phase. Timer for expire closing started.')
+      let timerDelay = (proposalState === 5 ? parameters.boostedVotePeriodLimit.toNumber() * 1000 : parameters.quietEndingPeriod.toNumber() * 1000) + boostedTime * 1000 - Date.now()
+      console.log('Proposal: ' + proposalId + ' entered ' +
+        (proposalState === 5 ? 'Boosted' : 'Quiet Ending') + ' Phase. Expiration timer has been set to: ' + timerDelay)
 
       // Setup timer for the expiration time
-      let timerDelay = (proposalState === 5 ? parameters.boostedVotePeriodLimit.toNumber() * 1000 : parameters.quietEndingPeriod.toNumber() * 1000) + boostedTime * 1000 - Date.now()
       
       activeTimers[proposalId] = setTimeout(async () => {
         activeTimers[proposalId] = undefined
-        console.log(
-          'Proposal: ' + proposalId + ' entered ' +
-                        (proposalState === 5 ? 'Boosted' : 'Quiet Ending') +
-                        ' Phase. Expiration timer has been set to: ' +
-                        (proposalState === 5 ? parameters.boostedVotePeriodLimit.toNumber() : parameters.quietEndingPeriod.toNumber())
-        )
+        console.log('Proposal: ' + proposalId + ' has expired. Attempting to redeem proposal.')
 
         // Check if can close the proposal as expired and claim the bounty
         let failed = false
