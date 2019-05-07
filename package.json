@@ -1,0 +1,35 @@
+{
+  "name": "@daostack/executeproposalbot",
+  "version": "1.0.0",
+  "description": "Execute failed proposals for DAOstack DAOs",
+  "main": "index.js",
+  "engines": {
+    "node": ">=10.15.0"
+  },
+  "keywords": [
+    "DAO",
+    "DAOstack",
+    "Arc",
+    "Ethereum",
+    "Blockchain"
+  ],
+  "author": "DAOstack (https://www.daostack.io)",
+  "license": "GPL-3.0",
+  "scripts": {
+    "lint": "eslint .",
+    "lint-fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@daostack/ganache-cli": "6.4.3",
+    "@daostack/migration": "0.0.1-rc.16-v1",
+    "web3": "^1.0.0-beta.54"
+  },
+  "devDependencies": {
+    "eslint": "^5.15.1",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-node": "^8.0.1",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0"
+  }
+}

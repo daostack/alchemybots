@@ -1,0 +1,104 @@
+let network = process.env.NETWORK
+let privateKey = process.env.PRIVATE_KEY
+let scanFromBlock = process.env.SCAN_FROM_BLOCK
+let web3WSProvider = process.env.WEB3_WS_PROVIDER
+let gasPrice = process.env.GAS_PRICE
+
+// Setting up Web3 instance
+const Web3 = require('web3')
+const web3 = new Web3(new Web3.providers.WebsocketProvider(web3WSProvider))
+let account = web3.eth.accounts.privateKeyToAccount(privateKey)
+web3.eth.accounts.wallet.add(account)
+web3.eth.defaultAccount = account.address
+
+// Setup Genesis Protocol
+const DAOstackMigration = require('@daostack/migration')
+let migration = DAOstackMigration.migration(network)
+const GenesisProtocol = require('@daostack/arc/build/contracts/GenesisProtocol.json')
+let gpAddress = migration.base.GenesisProtocol
+let genesisProtocol = new web3.eth.Contract(GenesisProtocol.abi, gpAddress)
+
+// List all active timers by proposalId
+let activeTimers = {}
+
+// Subscrice to StateChange events of the Genesis Protocol
+genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
+  if (!error) {
+    // Get the proposal and Genesis Protocol data
+    let proposalId = events.returnValues._proposalId
+    let proposalState = events.returnValues._proposalState
+    let proposal = await genesisProtocol.methods.proposals(proposalId).call()
+    let parameters = await genesisProtocol.methods.parameters(proposal.paramsHash).call()
+
+    // Clear past timeouts if existed
+    if (activeTimers[proposalId] !== undefined) {
+      clearTimeout(activeTimers[proposalId])
+      activeTimers[proposalId] = undefined
+      console.log('Proposal: ' + proposalId + ' state changed. Stopping timer.')
+    }
+
+    // If entered into Boosted or Quiet Ending state
+    if (proposalState === 5 || proposalState === 6) {
+      console.log('Proposal: ' + proposalId + ' has entered Boosted/ QEP phase. Timer for expire closing started.')
+
+      // Setup timer for the expiration time
+      activeTimers[proposalId] = setTimeout(async () => {
+        activeTimers[proposalId] = undefined
+        console.log(
+          'Proposal: ' + proposalId + ' entered ' +
+                        (proposalState === 5 ? 'Boosted' : 'Quiet Ending') +
+                        ' Phase. Expiration timer has been set to: ' +
+                        (proposalState === 5 ? parameters.boostedVotePeriodLimit.toNumber() : parameters.quietEndingPeriod.toNumber())
+        )
+
+        // Check if can close the proposal as expired and claim the bounty
+        let failed = false
+        let expirationCallBounty = await genesisProtocol.methods.executeBoosted(proposalId).call().catch((error) => {
+          console.log('Could not execute Proposal: ' + proposalId + '. error returned: ' + extractJSON(error.toString())[0].message)
+          failed = true
+        })
+
+        if (!failed && Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0) {
+          // Close the proposal as expired and claim the bounty
+          await genesisProtocol.methods.executeBoosted(proposalId).send({
+            from: web3.eth.defaultAccount,
+            gas: 200000,
+            gasPrice: gasPrice
+          }, function (error, transactionHash) {
+            if (!error) {
+              console.log('Proposal: ' + proposalId + ' has expired and was successfully executed: ' + transactionHash + '\nReward received for execution: ' + web3.utils.fromWei(expirationCallBounty.toString()))
+            } else {
+              console.log('Could not execute Proposal: ' + proposalId)
+            }
+          })
+        }
+      }, proposalState === 5 ? parameters.boostedVotePeriodLimit.toNumber() * 1000 : parameters.quietEndingPeriod.toNumber() * 1000)
+    }
+  }
+}
+)
+
+// Helpers
+
+// Extract error JSON object from the error string
+function extractJSON (str) {
+  var firstOpen, firstClose, candidate
+  firstOpen = str.indexOf('{', firstOpen + 1)
+  do {
+    firstClose = str.lastIndexOf('}')
+    if (firstClose <= firstOpen) {
+      return null
+    }
+    do {
+      candidate = str.substring(firstOpen, firstClose + 1)
+      try {
+        var res = JSON.parse(candidate)
+        return [res, firstOpen, firstClose + 1]
+      } catch (e) {
+        console.log('JSON error parsing failed')
+      }
+      firstClose = str.substr(0, firstClose).lastIndexOf('}')
+    } while (firstClose > firstOpen)
+    firstOpen = str.indexOf('{', firstOpen + 1)
+  } while (firstOpen !== -1)
+}
