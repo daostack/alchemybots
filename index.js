@@ -23,6 +23,7 @@ let genesisProtocol = new web3.eth.Contract(GenesisProtocol.abi, gpAddress)
 let activeTimers = {}
 
 // Subscrice to StateChange events of the Genesis Protocol
+console.log("\nStarted listening to StateChange events of Genesis Protocol: " + gpAddress + " on " + network + " network \n")
 genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
   if (!error) {
     // Get the proposal and Genesis Protocol data
@@ -36,7 +37,7 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
     if (activeTimers[proposalId] !== undefined) {
       clearTimeout(activeTimers[proposalId])
       activeTimers[proposalId] = undefined
-      console.log('Proposal: ' + proposalId + ' state changed. Stopping timer.')
+      console.log('Proposal: ' + proposalId + ' state changed. Stopping timer.\n')
     }
 
     // If entered into Boosted or Quiet Ending state
@@ -47,18 +48,18 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
       }
 
       console.log('Proposal: ' + proposalId + ' entered ' +
-        (proposalState === 5 ? 'Boosted' : 'Quiet Ending') + ' Phase. Expiration timer has been set to: ' + (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now"))
+        (proposalState === 5 ? 'Boosted' : 'Quiet Ending') + ' Phase. Expiration timer has been set to: ' + (timerDelay !== 0 ? convertMillisToTime(timerDelay) + "\n" : "now\n"))
 
       // Setup timer for the expiration time
       
       activeTimers[proposalId] = setTimeout(async () => {
         activeTimers[proposalId] = undefined
-        console.log('Proposal: ' + proposalId + ' has expired. Attempting to redeem proposal.')
+        console.log('Proposal: ' + proposalId + ' has expired. Attempting to redeem proposal.\n')
 
         // Check if can close the proposal as expired and claim the bounty
         let failed = false
         let expirationCallBounty = await genesisProtocol.methods.executeBoosted(proposalId).call().catch((error) => {
-          console.log('Could not call execute Proposal: ' + proposalId + '. error returned: ' + extractJSON(error.toString())[0].message)
+          console.log('Could not call execute Proposal: ' + proposalId + '. error returned: ' + extractJSON(error.toString())[0].message + "\n")
           failed = true
         })
 
@@ -70,10 +71,12 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
             gasPrice: gasPrice
           }, function (error, transactionHash) {
             if (!error) {
-              console.log('Proposal: ' + proposalId + ' has expired and was successfully executed: ' + transactionHash + '\nReward received for execution: ' + web3.utils.fromWei(expirationCallBounty.toString()))
+              console.log('Proposal: ' + proposalId + ' has expired and was successfully executed: ' + transactionHash + '\nReward received for execution: ' + web3.utils.fromWei(expirationCallBounty.toString()) + "\n")
             } else {
-              console.log('Could not execute Proposal: ' + proposalId + '. error returned: ' + extractJSON(error.toString())[0].message)
+              console.log('Could not execute Proposal: ' + proposalId + '. error returned: ' + extractJSON(error.toString())[0].message + "\n")
             }
+          }).on('confirmation', function (_, receipt) {
+            console.log("Execution transaction: " + receipt.transactionHash + " for proposal: " + proposalId + " was successfully confirmed.\n")
           })
         }
       }, timerDelay)
@@ -99,7 +102,7 @@ function extractJSON (str) {
         var res = JSON.parse(candidate)
         return [res, firstOpen, firstClose + 1]
       } catch (e) {
-        console.log('JSON error parsing failed')
+        console.log('JSON error parsing failed\n')
       }
       firstClose = str.substr(0, firstClose).lastIndexOf('}')
     } while (firstClose > firstOpen)
