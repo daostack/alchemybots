@@ -4,6 +4,7 @@ let privateKey = process.env.PRIVATE_KEY
 let scanFromBlock = process.env.SCAN_FROM_BLOCK
 let web3WSProvider = process.env.WEB3_WS_PROVIDER
 let gasPrice = process.env.GAS_PRICE
+let nonce = -1
 
 // Setting up Web3 instance
 const Web3 = require('web3')
@@ -25,6 +26,10 @@ let activeTimers = {}
 // Subscrice to StateChange events of the Genesis Protocol
 console.log("\n" + Date.now() + " | Started listening to StateChange events of Genesis Protocol: " + gpAddress + " on " + network + " network \n")
 genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
+  if (nonce === -1) {
+    nonce = await web3.eth.getTransactionCount(web3.eth.defaultAccount) - 1
+  }
+
   if (!error) {
     // Get the proposal and Genesis Protocol data
     let proposalId = events.returnValues._proposalId
@@ -69,7 +74,8 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
           await genesisProtocol.methods.executeBoosted(proposalId).send({
             from: web3.eth.defaultAccount,
             gas: 200000,
-            gasPrice:  web3.utils.toWei(gasPrice, "gwei")
+            gasPrice:  web3.utils.toWei(gasPrice, "gwei"),
+            nonce: ++nonce
           }, function (error, transactionHash) {
             if (!error) {
               console.log(Date.now() + ' | Proposal: ' + proposalId + ' has expired and was successfully executed: ' + transactionHash + '\nReward received for execution: ' + web3.utils.fromWei(expirationCallBounty.toString()) + " GEN\n")
@@ -102,7 +108,8 @@ genesisProtocol.events.StateChange({ fromBlock: scanFromBlock }, async (error, e
           await genesisProtocol.methods.execute(proposalId).send({
             from: web3.eth.defaultAccount,
             gas: 200000,
-            gasPrice:  web3.utils.toWei(gasPrice, "gwei")
+            gasPrice:  web3.utils.toWei(gasPrice, "gwei"),
+            nonce: ++nonce
           }, function (error, transactionHash) {
             if (!error) {
               console.log(Date.now() + ' | Proposal: ' + proposalId + ' was successfully executed: ' + transactionHash + "\n")
