@@ -148,36 +148,6 @@ genesisProtocol.events.StateChange(
                         extractJSON(error.toString())[0].message +
                         "\n"
                     );
-
-                    console.log(Date.now() + " | Retrying...\n");
-
-                    // Try call executeBoosted again
-                    await genesisProtocol.methods
-                      .executeBoosted(proposalId)
-                      .send(
-                        {
-                          from: web3.eth.defaultAccount,
-                          gas: 200000,
-                          gasPrice: web3.utils.toWei(gasPrice, "gwei"),
-                          nonce: ++nonce
-                        },
-                        async function(error, transactionHash) {
-                          if (!error) {
-                            console.log(
-                              Date.now() +
-                                " | Proposal: " +
-                                proposalId +
-                                " has expired and was successfully executed: " +
-                                transactionHash +
-                                "\nReward received for execution: " +
-                                web3.utils.fromWei(
-                                  expirationCallBounty.toString()
-                                ) +
-                                " GEN\n"
-                            );
-                          }
-                        }
-                      );
                   }
                 }
               )
@@ -192,7 +162,7 @@ genesisProtocol.events.StateChange(
                 );
               });
           }
-        }, timerDelay - 5000);
+        }, timerDelay);
       } else if (proposalState === 4 && proposal.state === 4) {
         // Calculate the milliseconds until pre-boosting ends
         let preBoostedTime = (await genesisProtocol.methods
