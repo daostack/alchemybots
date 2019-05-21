@@ -23,19 +23,25 @@ let genesisProtocol = new web3.eth.Contract(GenesisProtocol.abi, gpAddress);
 // List all active timers by proposalId
 let activeTimers = {};
 
+// List of all redeemed proposals
+let redeemedProposals = {};
+
+const retryLimit = 5;
+// List of all retries of proposals executions
+let retriedCount = {};
+
 // Subscrice to StateChange events of the Genesis Protocol
-console.log(
-  "\n" +
-    Date.now() +
-    " | Started listening to StateChange events of Genesis Protocol: " +
+log(
+  "Started listening to StateChange events of Genesis Protocol: " +
     gpAddress +
     " on " +
     network +
-    " network \n"
+    " network"
 );
-genesisProtocol.events.StateChange(
-  { fromBlock: scanFromBlock },
-  async (error, events) => {
+
+// Start listening to events
+genesisProtocol.events
+  .StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
     if (nonce === -1) {
       nonce = (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
     }
@@ -47,16 +53,7 @@ genesisProtocol.events.StateChange(
       let proposal = await genesisProtocol.methods.proposals(proposalId).call();
 
       // Clear past timeouts if existed
-      if (activeTimers[proposalId] !== undefined) {
-        clearTimeout(activeTimers[proposalId]);
-        activeTimers[proposalId] = undefined;
-        console.log(
-          Date.now() +
-            " | Proposal: " +
-            proposalId +
-            " state changed. Stopping timer.\n"
-        );
-      }
+      clearTimer(proposalId);
 
       // If entered into Boosted or Quiet Ending state
       if (
@@ -64,185 +61,257 @@ genesisProtocol.events.StateChange(
         (proposal.state === 5 || proposal.state === 6)
       ) {
         // Calculate the milliseconds until expiration
-        let boostedTime = (await genesisProtocol.methods
-          .getProposalTimes(proposalId)
-          .call())[1].toNumber();
-        let boostingPeriod = proposal.currentBoostedVotePeriodLimit.toNumber();
-        let timerDelay = (boostingPeriod + boostedTime) * 1000 - Date.now();
-        if (timerDelay < 0) {
-          timerDelay = 0;
-        }
-
-        console.log(
-          Date.now() +
-            " | Proposal: " +
+        let timerDelay = await calculateTimerDelay(proposalId, proposal);
+        log(
+          "Proposal: " +
             proposalId +
             " entered " +
             (proposalState === 5 ? "Boosted" : "Quiet Ending") +
             " Phase. Expiration timer has been set to: " +
-            (timerDelay !== 0
-              ? convertMillisToTime(timerDelay) + "\n"
-              : "now\n")
+            (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
         );
-
         // Setup timer for the expiration time
-
-        activeTimers[proposalId] = setTimeout(async () => {
-          activeTimers[proposalId] = undefined;
-          console.log(
-            Date.now() +
-              " | Proposal: " +
-              proposalId +
-              " has expired. Attempting to redeem proposal.\n"
-          );
-
-          // Check if can close the proposal as expired and claim the bounty
-          let failed = false;
-          let expirationCallBounty = await genesisProtocol.methods
-            .executeBoosted(proposalId)
-            .call()
-            .catch(error => {
-              console.log(
-                Date.now() +
-                  " | Could not call execute Proposal: " +
-                  proposalId +
-                  ". error returned: " +
-                  extractJSON(error.toString())[0].message +
-                  "\n"
-              );
-              failed = true;
-            });
-
-          if (
-            !failed &&
-            Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0
-          ) {
-            // Close the proposal as expired and claim the bounty
-            await genesisProtocol.methods
-              .executeBoosted(proposalId)
-              .send(
-                {
-                  from: web3.eth.defaultAccount,
-                  gas: 200000,
-                  gasPrice: web3.utils.toWei(gasPrice, "gwei"),
-                  nonce: ++nonce
-                },
-                async function(error, transactionHash) {
-                  if (!error) {
-                    console.log(
-                      Date.now() +
-                        " | Proposal: " +
-                        proposalId +
-                        " has expired and was successfully executed: " +
-                        transactionHash +
-                        "\nReward received for execution: " +
-                        web3.utils.fromWei(expirationCallBounty.toString()) +
-                        " GEN\n"
-                    );
-                  } else {
-                    console.log(
-                      Date.now() +
-                        " | Could not execute Proposal: " +
-                        proposalId +
-                        ". error returned: " +
-                        extractJSON(error.toString())[0].message +
-                        "\n"
-                    );
-                  }
-                }
-              )
-              .on("confirmation", function(_, receipt) {
-                console.log(
-                  Date.now() +
-                    " | Execution transaction: " +
-                    receipt.transactionHash +
-                    " for proposal: " +
-                    proposalId +
-                    " was successfully confirmed.\n"
-                );
-              });
-          }
-        }, timerDelay);
+        await setExecutionTimer(proposalId, timerDelay);
       } else if (proposalState === 4 && proposal.state === 4) {
-        // Calculate the milliseconds until pre-boosting ends
-        let preBoostedTime = (await genesisProtocol.methods
-          .getProposalTimes(proposalId)
-          .call())[2].toNumber();
-        let preBoostingPeriod = (await genesisProtocol.methods
-          .parameters(proposal.paramsHash)
-          .call()).preBoostedVotePeriodLimit.toNumber();
-        let timerDelay =
-          (preBoostingPeriod + preBoostedTime) * 1000 - Date.now();
-        if (timerDelay < 0) {
-          timerDelay = 0;
-        }
-
-        console.log(
-          Date.now() +
-            " | Proposal: " +
+        let timerDelay = await calculatePreBoostedTimerDelay(
+          proposalId,
+          proposal
+        );
+        log(
+          "Proposal: " +
             proposalId +
             " entered Pre-Boosted Phase. Boosting timer has been set to: " +
-            (timerDelay !== 0
-              ? convertMillisToTime(timerDelay) + "\n"
-              : "now\n")
+            (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
         );
-
-        // Setup timer for the pre-boosting time
-        activeTimers[proposalId] = setTimeout(async () => {
-          activeTimers[proposalId] = undefined;
-
-          let proposal = await genesisProtocol.methods
-            .proposals(proposalId)
-            .call();
-          if (proposal.state === 4) {
-            // Boost the proposal or return it to Queue
-            await genesisProtocol.methods
-              .execute(proposalId)
-              .send(
-                {
-                  from: web3.eth.defaultAccount,
-                  gas: 200000,
-                  gasPrice: web3.utils.toWei(gasPrice, "gwei"),
-                  nonce: ++nonce
-                },
-                function(error, transactionHash) {
-                  if (!error) {
-                    console.log(
-                      Date.now() +
-                        " | Proposal: " +
-                        proposalId +
-                        " was successfully executed: " +
-                        transactionHash +
-                        "\n"
-                    );
-                  } else {
-                    console.log(
-                      Date.now() +
-                        " | Could not execute Proposal: " +
-                        proposalId +
-                        ". error returned: " +
-                        extractJSON(error.toString())[0].message +
-                        "\n"
-                    );
-                  }
-                }
-              )
-              .on("confirmation", function(_, receipt) {
-                console.log(
-                  Date.now() +
-                    " | Boosting transaction: " +
-                    receipt.transactionHash +
-                    " for proposal: " +
-                    proposalId +
-                    " was successfully confirmed.\n"
-                );
-              });
-          }
-        }, timerDelay);
+        await setPreBoostingTimer(proposalId, timerDelay + 10000);
       }
+    } else {
+      log(" Failed to start event listener");
     }
+  })
+  .on("error", console.error);
+
+listenProposalBountyRedeemed();
+
+////////////// Functions //////////////
+
+async function setPreBoostingTimer(proposalId, timerDelay) {
+  // Setup timer for the pre-boosting time
+  activeTimers[proposalId] = setTimeout(async () => {
+    activeTimers[proposalId] = undefined;
+
+    let proposal = await genesisProtocol.methods.proposals(proposalId).call();
+    if (proposal.state === 4) {
+      // Boost the proposal or return it to Queue
+      await genesisProtocol.methods
+        .execute(proposalId)
+        .send(
+          {
+            from: web3.eth.defaultAccount,
+            gas: 300000,
+            gasPrice: web3.utils.toWei(gasPrice, "gwei"),
+            nonce: ++nonce
+          },
+          function(error, transactionHash) {
+            if (!error) {
+              log(
+                "Proposal: " +
+                  proposalId +
+                  " was successfully executed: " +
+                  transactionHash
+              );
+            } else {
+              log(
+                Date.now() +
+                  " | Could not execute Proposal: " +
+                  proposalId +
+                  ". error returned: " +
+                  extractJSON(error.toString())[0].message
+              );
+            }
+          }
+        )
+        .on("confirmation", function(_, receipt) {
+          log(
+            "Boosting transaction: " +
+              receipt.transactionHash +
+              " for proposal: " +
+              proposalId +
+              " was successfully confirmed."
+          );
+        })
+        .on("error", console.error);
+    }
+  }, timerDelay);
+}
+
+async function setExecutionTimer(proposalId, timerDelay) {
+  activeTimers[proposalId] = setTimeout(async () => {
+    activeTimers[proposalId] = undefined;
+    log(
+      "Proposal: " + proposalId + " has expired. Attempting to redeem proposal."
+    );
+
+    // Check if can close the proposal as expired and claim the bounty
+    let failed = false;
+    let expirationCallBounty = await genesisProtocol.methods
+      .executeBoosted(proposalId)
+      .call()
+      .catch(error => {
+        log(
+          "Could not call execute Proposal: " +
+            proposalId +
+            ". error returned: " +
+            extractJSON(error.toString())[0].message
+        );
+        failed = true;
+      });
+
+    if (
+      !failed &&
+      Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0
+    ) {
+      // Close the proposal as expired and claim the bounty
+      await genesisProtocol.methods
+        .executeBoosted(proposalId)
+        .send(
+          {
+            from: web3.eth.defaultAccount,
+            gas: 300000,
+            gasPrice: web3.utils.toWei(gasPrice, "gwei"),
+            nonce: ++nonce
+          },
+          async function(error) {
+            if (error) {
+              log(error);
+            }
+            activeTimers[proposalId] = setTimeout(async () => {
+              retriedCount[proposalId] !== undefined
+                ? retriedCount[proposalId]++
+                : (retriedCount[proposalId] = 1);
+              await retryExecuteProposal(proposalId, error);
+            }, 10000);
+          }
+        )
+        .on("confirmation", function(_, receipt) {
+          log(
+            "Execution transaction: " +
+              receipt.transactionHash +
+              " for proposal: " +
+              proposalId +
+              " was successfully confirmed."
+          );
+        })
+        .on("error", console.error);
+    } else {
+      log(
+        "Failed to execute proposal:" +
+          proposalId +
+          " for " +
+          expirationCallBounty +
+          " GEN"
+      );
+    }
+  }, timerDelay);
+}
+
+async function retryExecuteProposal(proposalId, error) {
+  let proposal = await genesisProtocol.methods.proposals(proposalId).call();
+  if (proposal.state !== 2) {
+    let errorMsg = extractJSON(error.toString());
+    log(
+      "Could not execute Proposal: " +
+        proposalId +
+        ". error returned: " +
+        (errorMsg !== null ? errorMsg[0].message : error)
+    );
+    if (retriedCount[proposalId] <= retryLimit) {
+      log("Retrying...");
+      retriedCount[proposalId]++;
+      let timerDelay = await calculateTimerDelay(proposalId, proposal);
+      setExecutionTimer(proposalId, timerDelay + 5000);
+    } else {
+      log("Too many retries, proposal execution abandoned.");
+    }
+  } else {
+    log("Proposal: " + proposalId + " was execute.");
   }
-);
+}
+
+async function listenProposalBountyRedeemed() {
+  let fromBlock = await web3.eth.getBlockNumber();
+  genesisProtocol.events
+    .ExpirationCallBounty(
+      {
+        fromBlock
+      },
+      async (error, events) => {
+        if (!error) {
+          let proposalId = events.returnValues._proposalId;
+          let beneficiary = events.returnValues._beneficiary;
+          let amount = events.returnValues._amount;
+          clearTimer(proposalId);
+          redeemedProposals[proposalId] = {
+            beneficiary,
+            amount
+          };
+          if (
+            web3.eth.defaultAccount.toLowerCase() === beneficiary.toLowerCase()
+          ) {
+            log(
+              "Proposal: " +
+                proposalId +
+                " has expired and was successfully executed: " +
+                events.transactionHash +
+                "\nReward received for execution: " +
+                web3.utils.fromWei(amount.toString()) +
+                " GEN"
+            );
+          } else {
+            log(
+              "Proposal: " +
+                proposalId +
+                " was redeemed by another account: " +
+                beneficiary +
+                "\nReward received for execution: " +
+                web3.utils.fromWei(amount.toString()) +
+                " GEN"
+            );
+          }
+        }
+      }
+    )
+    .on("error", console.error);
+}
+
+// Timer Delay calculator
+async function calculateTimerDelay(proposalId, proposal) {
+  // Calculate the milliseconds until boosting ends
+  let boostedTime = (await genesisProtocol.methods
+    .getProposalTimes(proposalId)
+    .call())[1].toNumber();
+  let boostingPeriod = proposal.currentBoostedVotePeriodLimit.toNumber();
+  let timerDelay = (boostingPeriod + boostedTime) * 1000 - Date.now();
+  if (timerDelay < 0) {
+    timerDelay = 0;
+  }
+  return timerDelay;
+}
+
+async function calculatePreBoostedTimerDelay(proposalId, proposal) {
+  // Calculate the milliseconds until pre-boosting ends
+  let preBoostedTime = (await genesisProtocol.methods
+    .getProposalTimes(proposalId)
+    .call())[2].toNumber();
+  let preBoostingPeriod = (await genesisProtocol.methods
+    .parameters(proposal.paramsHash)
+    .call()).preBoostedVotePeriodLimit.toNumber();
+  let timerDelay = (preBoostingPeriod + preBoostedTime) * 1000 - Date.now();
+  if (timerDelay < 0) {
+    timerDelay = 0;
+  }
+  return timerDelay;
+}
 
 // Helpers
 
@@ -261,7 +330,7 @@ function extractJSON(str) {
         var res = JSON.parse(candidate);
         return [res, firstOpen, firstClose + 1];
       } catch (e) {
-        console.log(Date.now() + " | JSON error parsing failed\n");
+        log("JSON error parsing failed.");
       }
       firstClose = str.substr(0, firstClose).lastIndexOf("}");
     } while (firstClose > firstOpen);
@@ -281,4 +350,21 @@ function convertMillisToTime(millis) {
   minutes = minutes < 10 ? "0" + minutes : minutes;
   seconds = seconds < 10 ? "0" + seconds : seconds;
   return hours + "h" + delim + minutes + "m" + delim + seconds + "s";
+}
+
+function clearTimer(proposalId) {
+  if (activeTimers[proposalId] !== undefined) {
+    clearTimeout(activeTimers[proposalId]);
+    activeTimers[proposalId] = undefined;
+    log("Proposal: " + proposalId + " state changed. Stopping timer.");
+  }
+}
+
+function log(message) {
+  console.log(
+    new Date().toLocaleString("en-US", { hour12: false }) +
+      " | " +
+      message +
+      "\n"
+  );
 }
