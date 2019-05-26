@@ -1,10 +1,12 @@
 module.exports = {
   extends: "eslint:recommended",
   parser: "babel-eslint",
+  plugins: ["jest"],
   env: {
     amd: true,
     node: true,
-    es6: true
+    es6: true,
+    "jest/globals": true
   },
   rules: {
     "eol-last": 2,

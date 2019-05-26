@@ -1,4 +1,5 @@
 require("dotenv").config();
+
 let network = process.env.NETWORK;
 let privateKey = process.env.PRIVATE_KEY;
 let scanFromBlock = process.env.SCAN_FROM_BLOCK;
@@ -30,70 +31,64 @@ const retryLimit = 5;
 // List of all retries of proposals executions
 let retriedCount = {};
 
-// Subscrice to StateChange events of the Genesis Protocol
-log(
-  "Started listening to StateChange events of Genesis Protocol: " +
-    gpAddress +
-    " on " +
-    network +
-    " network"
-);
-
-// Start listening to events
-genesisProtocol.events
-  .StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
-    if (nonce === -1) {
-      nonce = (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
-    }
-
-    if (!error) {
-      // Get the proposal and Genesis Protocol data
-      let proposalId = events.returnValues._proposalId;
-      let proposalState = events.returnValues._proposalState;
-      let proposal = await genesisProtocol.methods.proposals(proposalId).call();
-
-      // Clear past timeouts if existed
-      clearTimer(proposalId);
-
-      // If entered into Boosted or Quiet Ending state
-      if (
-        (proposalState === 5 || proposalState === 6) &&
-        (proposal.state === 5 || proposal.state === 6)
-      ) {
-        // Calculate the milliseconds until expiration
-        let timerDelay = await calculateTimerDelay(proposalId, proposal);
-        log(
-          "Proposal: " +
-            proposalId +
-            " entered " +
-            (proposalState === 5 ? "Boosted" : "Quiet Ending") +
-            " Phase. Expiration timer has been set to: " +
-            (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
-        );
-        // Setup timer for the expiration time
-        await setExecutionTimer(proposalId, timerDelay);
-      } else if (proposalState === 4 && proposal.state === 4) {
-        let timerDelay = await calculatePreBoostedTimerDelay(
-          proposalId,
-          proposal
-        );
-        log(
-          "Proposal: " +
-            proposalId +
-            " entered Pre-Boosted Phase. Boosting timer has been set to: " +
-            (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
-        );
-        await setPreBoostingTimer(proposalId, timerDelay + 10000);
-      }
-    } else {
-      log(" Failed to start event listener");
-    }
-  })
-  .on("error", console.error);
-
-listenProposalBountyRedeemed();
-
 ////////////// Functions //////////////
+
+async function listenProposalsStateChanges() {
+  // Start listening to events
+  genesisProtocol.events
+    .StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
+      if (nonce === -1) {
+        nonce =
+          (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
+      }
+
+      if (!error) {
+        // Get the proposal and Genesis Protocol data
+        let proposalId = events.returnValues._proposalId;
+        let proposalState = events.returnValues._proposalState;
+        let proposal = await genesisProtocol.methods
+          .proposals(proposalId)
+          .call();
+
+        // Clear past timeouts if existed
+        clearTimer(proposalId);
+
+        // If entered into Boosted or Quiet Ending state
+        if (
+          (proposalState === 5 || proposalState === 6) &&
+          (proposal.state === 5 || proposal.state === 6)
+        ) {
+          // Calculate the milliseconds until expiration
+          let timerDelay = await calculateTimerDelay(proposalId, proposal);
+          log(
+            "Proposal: " +
+              proposalId +
+              " entered " +
+              (proposalState === 5 ? "Boosted" : "Quiet Ending") +
+              " Phase. Expiration timer has been set to: " +
+              (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+          );
+          // Setup timer for the expiration time
+          await setExecutionTimer(proposalId, timerDelay);
+        } else if (proposalState === 4 && proposal.state === 4) {
+          let timerDelay = await calculatePreBoostedTimerDelay(
+            proposalId,
+            proposal
+          );
+          log(
+            "Proposal: " +
+              proposalId +
+              " entered Pre-Boosted Phase. Boosting timer has been set to: " +
+              (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+          );
+          await setPreBoostingTimer(proposalId, timerDelay + 10000);
+        }
+      } else {
+        log(" Failed to start event listener");
+      }
+    })
+    .on("error", console.error);
+}
 
 async function setPreBoostingTimer(proposalId, timerDelay) {
   // Setup timer for the pre-boosting time
@@ -361,10 +356,41 @@ function clearTimer(proposalId) {
 }
 
 function log(message) {
-  console.log(
+  let logMsg =
     new Date().toLocaleString("en-US", { hour12: false }) +
-      " | " +
-      message +
-      "\n"
-  );
+    " | " +
+    message +
+    "\n";
+  console.log(logMsg);
+  // Requiring fs module in which
+  // writeFile function is defined.
+  const fs = require("fs");
+
+  fs.readFile("logs.txt", "utf-8", (err, data) => {
+    if (err) {
+      data = "";
+    }
+    // Write data in 'logs.txt' .
+    fs.writeFile("logs.txt", data + "\n" + logMsg, err => {
+      if (err) {
+        console.log("Error writing into logs.txt: " + logMsg);
+      }
+    });
+  });
 }
+
+module.exports = {
+  startBot: async function() {
+    // Subscrice to StateChange events of the Genesis Protocol
+    log(
+      "Started listening to StateChange events of Genesis Protocol: " +
+        gpAddress +
+        " on " +
+        network +
+        " network"
+    );
+
+    await listenProposalsStateChanges();
+    await listenProposalBountyRedeemed();
+  }
+};
