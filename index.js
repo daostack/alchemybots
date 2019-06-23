@@ -373,8 +373,25 @@ function log(message) {
   });
 }
 
-module.exports = {
-  startBot: async function() {
+function restart() {
+  console("Restarting Bot...");
+  for (let proposalId in activeTimers) {
+    clearTimer(proposalId)
+  }
+
+  activeTimers = {};
+  web3.eth.clearSubscriptions();
+  startBot();
+}
+
+async function startBot() {
+  // Setup Genesis Protocol
+  const DAOstackMigration = require("@daostack/migration");
+  let migration = DAOstackMigration.migration(network);
+  for (let version in migration.base) {    
+    const GenesisProtocol = require("@daostack/migration/abis/" + version + "/GenesisProtocol.json");
+    let gpAddress = migration.base[version].GenesisProtocol;
+    let genesisProtocol = new web3.eth.Contract(GenesisProtocol, gpAddress);
     // Subscrice to StateChange events of the Genesis Protocol
     log(
       "Started listening to StateChange events of Genesis Protocol: " +
@@ -384,7 +401,12 @@ module.exports = {
         " network"
     );
 
-    await listenProposalsStateChanges();
-    await listenProposalBountyRedeemed();
+    await listenProposalsStateChanges(genesisProtocol);
+    await listenProposalBountyRedeemed(genesisProtocol);
   }
+  setTimeout(restart, 1000 * 60 * 60 * 6)
+}
+
+module.exports = {
+  startBot,
 };
