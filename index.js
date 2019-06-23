@@ -14,13 +14,6 @@ let account = web3.eth.accounts.privateKeyToAccount(privateKey);
 web3.eth.accounts.wallet.add(account);
 web3.eth.defaultAccount = account.address;
 
-// Setup Genesis Protocol
-const DAOstackMigration = require("@daostack/migration");
-let migration = DAOstackMigration.migration(network);
-const GenesisProtocol = require("@daostack/arc/build/contracts/GenesisProtocol.json");
-let gpAddress = migration.base.GenesisProtocol;
-let genesisProtocol = new web3.eth.Contract(GenesisProtocol.abi, gpAddress);
-
 // List all active timers by proposalId
 let activeTimers = {};
 
@@ -33,7 +26,7 @@ let retriedCount = {};
 
 ////////////// Functions //////////////
 
-async function listenProposalsStateChanges() {
+async function listenProposalsStateChanges(genesisProtocol) {
   // Start listening to events
   genesisProtocol.events
     .StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
@@ -59,7 +52,7 @@ async function listenProposalsStateChanges() {
           (proposal.state === 5 || proposal.state === 6)
         ) {
           // Calculate the milliseconds until expiration
-          let timerDelay = await calculateTimerDelay(proposalId, proposal);
+          let timerDelay = await calculateTimerDelay(genesisProtocol, proposalId, proposal);
           log(
             "Proposal: " +
               proposalId +
@@ -69,9 +62,10 @@ async function listenProposalsStateChanges() {
               (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
           );
           // Setup timer for the expiration time
-          await setExecutionTimer(proposalId, timerDelay);
+          await setExecutionTimer(genesisProtocol, proposalId, timerDelay);
         } else if (proposalState === 4 && proposal.state === 4) {
           let timerDelay = await calculatePreBoostedTimerDelay(
+            genesisProtocol,
             proposalId,
             proposal
           );
@@ -81,7 +75,7 @@ async function listenProposalsStateChanges() {
               " entered Pre-Boosted Phase. Boosting timer has been set to: " +
               (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
           );
-          await setPreBoostingTimer(proposalId, timerDelay + 10000);
+          await setPreBoostingTimer(genesisProtocol, proposalId, timerDelay + 10000);
         }
       } else {
         log(" Failed to start event listener");
@@ -90,7 +84,7 @@ async function listenProposalsStateChanges() {
     .on("error", console.error);
 }
 
-async function setPreBoostingTimer(proposalId, timerDelay) {
+async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
   // Setup timer for the pre-boosting time
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
@@ -140,7 +134,7 @@ async function setPreBoostingTimer(proposalId, timerDelay) {
   }, timerDelay);
 }
 
-async function setExecutionTimer(proposalId, timerDelay) {
+async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
     log(
@@ -184,7 +178,7 @@ async function setExecutionTimer(proposalId, timerDelay) {
               retriedCount[proposalId] !== undefined
                 ? retriedCount[proposalId]++
                 : (retriedCount[proposalId] = 1);
-              await retryExecuteProposal(proposalId, error);
+              await retryExecuteProposal(genesisProtocol, proposalId, error);
             }, 10000);
           }
         )
@@ -210,7 +204,7 @@ async function setExecutionTimer(proposalId, timerDelay) {
   }, timerDelay);
 }
 
-async function retryExecuteProposal(proposalId, error) {
+async function retryExecuteProposal(genesisProtocol, proposalId, error) {
   let proposal = await genesisProtocol.methods.proposals(proposalId).call();
   if (proposal.state !== 2) {
     let errorMsg = extractJSON(error.toString());
@@ -223,8 +217,8 @@ async function retryExecuteProposal(proposalId, error) {
     if (retriedCount[proposalId] <= retryLimit) {
       log("Retrying...");
       retriedCount[proposalId]++;
-      let timerDelay = await calculateTimerDelay(proposalId, proposal);
-      setExecutionTimer(proposalId, timerDelay + 5000);
+      let timerDelay = await calculateTimerDelay(genesisProtocol, proposalId, proposal);
+      setExecutionTimer(genesisProtocol, proposalId, timerDelay + 5000);
     } else {
       log("Too many retries, proposal execution abandoned.");
     }
@@ -233,7 +227,7 @@ async function retryExecuteProposal(proposalId, error) {
   }
 }
 
-async function listenProposalBountyRedeemed() {
+async function listenProposalBountyRedeemed(genesisProtocol) {
   let fromBlock = await web3.eth.getBlockNumber();
   genesisProtocol.events
     .ExpirationCallBounty(
@@ -280,7 +274,7 @@ async function listenProposalBountyRedeemed() {
 }
 
 // Timer Delay calculator
-async function calculateTimerDelay(proposalId, proposal) {
+async function calculateTimerDelay(genesisProtocol, proposalId, proposal) {
   // Calculate the milliseconds until boosting ends
   let boostedTime = (await genesisProtocol.methods
     .getProposalTimes(proposalId)
@@ -293,7 +287,7 @@ async function calculateTimerDelay(proposalId, proposal) {
   return timerDelay;
 }
 
-async function calculatePreBoostedTimerDelay(proposalId, proposal) {
+async function calculatePreBoostedTimerDelay(genesisProtocol, proposalId, proposal) {
   // Calculate the milliseconds until pre-boosting ends
   let preBoostedTime = (await genesisProtocol.methods
     .getProposalTimes(proposalId)
