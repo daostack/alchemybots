@@ -374,7 +374,7 @@ function log(message) {
 }
 
 function restart() {
-  console("Restarting Bot...");
+  console.log("Restarting Bot...");
   for (let proposalId in activeTimers) {
     clearTimer(proposalId)
   }
