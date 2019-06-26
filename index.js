@@ -76,9 +76,20 @@ async function listenProposalsStateChanges(genesisProtocol) {
               (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
           );
           await setPreBoostingTimer(genesisProtocol, proposalId, timerDelay + 10000);
+        } else if (proposalState === 3 && proposal.state === 3) {
+          // Calculate the milliseconds until expiration
+          let timerDelay = await calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal);
+          log(
+            "Proposal: " +
+              proposalId +
+              " entered the Queue. Expiration timer has been set to: " +
+              (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+          );
+          // Setup timer for the expiration time
+          await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
         }
       } else {
-        log(" Failed to start event listener");
+        log("Failed to start event listener");
       }
     })
     .on("error", console.error);
@@ -204,6 +215,44 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
   }, timerDelay);
 }
 
+async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
+  activeTimers[proposalId] = setTimeout(async () => {
+    activeTimers[proposalId] = undefined;
+    log(
+      "Proposal: " + proposalId + " has expired in queue. Attempting to execute proposal."
+    );
+
+    // Check if can close the proposal as expired and claim the bounty
+    
+      // Close the proposal as expired and claim the bounty
+    await genesisProtocol.methods
+      .execute(proposalId)
+      .send(
+        {
+          from: web3.eth.defaultAccount,
+          gas: 300000,
+          gasPrice: web3.utils.toWei(gasPrice, "gwei"),
+          nonce: ++nonce
+        },
+        async function(error) {
+          if (error) {
+            log(error);
+          }
+        }
+      )
+      .on("confirmation", function(_, receipt) {
+        log(
+          "Execution transaction: " +
+            receipt.transactionHash +
+            " for proposal: " +
+            proposalId +
+            " was successfully confirmed."
+        );
+      })
+      .on("error", console.error);
+  }, timerDelay);
+}
+
 async function retryExecuteProposal(genesisProtocol, proposalId, error) {
   let proposal = await genesisProtocol.methods.proposals(proposalId).call();
   if (proposal.state !== 2) {
@@ -271,6 +320,23 @@ async function listenProposalBountyRedeemed(genesisProtocol) {
       }
     )
     .on("error", console.error);
+}
+
+// Timer Delay calculator for expiration in Queue
+async function calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal) {
+  // Calculate the milliseconds until expiring in queue
+  let proposedTime = (await genesisProtocol.methods
+    .getProposalTimes(proposalId)
+    .call())[0].toNumber();
+  let queuedVotePeriod = (await genesisProtocol.methods
+    .parameters(proposal.paramsHash)
+    .call()).queuedVotePeriodLimit.toNumber();
+  let timerDelay = (queuedVotePeriod + proposedTime) * 1000 - Date.now();
+  if (timerDelay < 0) {
+    timerDelay = 0;
+  }
+  const safetyDelay = 20000 // This is a small dlay to make sure time differentials will not cause an issue
+  return timerDelay + safetyDelay;
 }
 
 // Timer Delay calculator
