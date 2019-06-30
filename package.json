@@ -28,11 +28,12 @@
     "@daostack/ganache-cli": "6.4.3",
     "@daostack/migration": "0.0.1-rc.19-v5",
     "dotenv": "^8.0.0",
-    "web3": "1.0.0-beta.55",
-    "yargs": "^12.0.2",
-    "tar": "^4.4.8",
+    "fstream": "^1.0.12",
+    "nodemailer": "^6.2.1",
     "swarm-js": "^0.1.39",
-    "fstream": "^1.0.12"
+    "tar": "^4.4.8",
+    "web3": "1.0.0-beta.55",
+    "yargs": "^12.0.2"
   },
   "devDependencies": {
     "@types/jest": "^24.0.13",

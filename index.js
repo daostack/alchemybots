@@ -99,6 +99,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
   // Setup timer for the pre-boosting time
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
+    await checkIfLowGas()
 
     let proposal = await genesisProtocol.methods.proposals(proposalId).call();
     if (proposal.state === 4) {
@@ -148,6 +149,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
 async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
+    await checkIfLowGas()
     log(
       "Proposal: " + proposalId + " has expired. Attempting to redeem proposal."
     );
@@ -218,6 +220,8 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
 async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
+    await checkIfLowGas()
+    
     log(
       "Proposal: " + proposalId + " has expired in queue. Attempting to execute proposal."
     );
@@ -437,6 +441,41 @@ function log(message) {
       }
     });
   });
+}
+
+async function checkIfLowGas() {
+  let botEthBalance = await web3.eth.getBalance(web3.eth.defaultAccount);
+  if (botEthBalance < 100000000000000000) { // 0.1 ETH
+    let sender = process.env.SENDER;
+    let receiver = process.env.RECEIVER;
+    let password = process.env.PASSWORD;
+
+    var nodemailer = require("nodemailer");
+
+    var transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: sender,
+        pass: password
+      }
+    });
+
+    var mailOptions = {
+      from: sender,
+      to: receiver,
+      subject: "Alchemy execution bot needs more ETH",
+      text:
+        "The Alchemy execution bot has low ETH balance, soon transactions will stop being broadcasted, please add add ETH to fix this."
+    };
+
+    transporter.sendMail(mailOptions, function(error, info) {
+      if (error) {
+        log(error);
+      } else {
+        log("Email sent: " + info.response);
+      }
+    });
+  }
 }
 
 function restart() {
