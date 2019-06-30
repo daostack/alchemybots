@@ -43,6 +43,11 @@ async function listenProposalsStateChanges(genesisProtocol) {
           .proposals(proposalId)
           .call();
 
+        if (proposal === null) {
+          log(proposalId + ' on voting machine ' + genesisProtocol.address + 'returned as null')
+          return
+        }
+
         // Clear past timeouts if existed
         clearTimer(proposalId);
 
