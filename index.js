@@ -98,6 +98,37 @@ async function listenProposalsStateChanges(genesisProtocol) {
       }
     })
     .on("error", console.error);
+
+    genesisProtocol.events
+    .NewProposal({ fromBlock: scanFromBlock }, async (error, events) => {
+      if (nonce === -1) {
+        nonce =
+          (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
+      }
+
+      if (!error) {
+        let proposalId = events.returnValues._proposalId;
+        let proposal = await genesisProtocol.methods
+          .proposals(proposalId)
+          .call();
+
+        // Calculate the milliseconds until expiration
+        if (proposal.state === 3) {
+          let timerDelay = await calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal);
+          log(
+            "Proposal: " +
+              proposalId +
+              " entered the Queue. Expiration timer has been set to: " +
+              (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+          );
+          // Setup timer for the expiration time
+          await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+        }
+      } else {
+        log("Failed to start event listener");
+      }
+})
+.on("error", console.error);
 }
 
 async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
