@@ -58,40 +58,46 @@ async function listenProposalsStateChanges(genesisProtocol) {
         ) {
           // Calculate the milliseconds until expiration
           let timerDelay = await calculateTimerDelay(genesisProtocol, proposalId, proposal);
-          log(
-            "Proposal: " +
-              proposalId +
-              " entered " +
-              (proposalState === 5 ? "Boosted" : "Quiet Ending") +
-              " Phase. Expiration timer has been set to: " +
-              (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
-          );
-          // Setup timer for the expiration time
-          await setExecutionTimer(genesisProtocol, proposalId, timerDelay);
+          if (timerDelay != -1) {
+            log(
+              "Proposal: " +
+                proposalId +
+                " entered " +
+                (proposalState === 5 ? "Boosted" : "Quiet Ending") +
+                " Phase. Expiration timer has been set to: " +
+                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+            );
+            // Setup timer for the expiration time
+            await setExecutionTimer(genesisProtocol, proposalId, timerDelay);
+          }
         } else if (proposalState === 4 && proposal.state === 4) {
           let timerDelay = await calculatePreBoostedTimerDelay(
             genesisProtocol,
             proposalId,
             proposal
           );
-          log(
-            "Proposal: " +
-              proposalId +
-              " entered Pre-Boosted Phase. Boosting timer has been set to: " +
-              (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
-          );
-          await setPreBoostingTimer(genesisProtocol, proposalId, timerDelay + 10000);
+          if (timerDelay != -1) {
+            log(
+              "Proposal: " +
+                proposalId +
+                " entered Pre-Boosted Phase. Boosting timer has been set to: " +
+                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+            );
+            await setPreBoostingTimer(genesisProtocol, proposalId, timerDelay + 10000);
+          }
         } else if (proposalState === 3 && proposal.state === 3) {
           // Calculate the milliseconds until expiration
           let timerDelay = await calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal);
-          log(
-            "Proposal: " +
-              proposalId +
-              " entered the Queue. Expiration timer has been set to: " +
-              (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
-          );
-          // Setup timer for the expiration time
-          await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+          if (timerDelay != -1) {
+            log(
+              "Proposal: " +
+                proposalId +
+                " entered the Queue. Expiration timer has been set to: " +
+                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+            );
+            // Setup timer for the expiration time
+            await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+          }
         }
       } else {
         log("Failed to start event listener");
@@ -115,14 +121,16 @@ async function listenProposalsStateChanges(genesisProtocol) {
         // Calculate the milliseconds until expiration
         if (proposal.state === 3) {
           let timerDelay = await calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal);
-          log(
-            "Proposal: " +
-              proposalId +
-              " entered the Queue. Expiration timer has been set to: " +
-              (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
-          );
-          // Setup timer for the expiration time
-          await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+          if (timerDelay != -1) {
+            log(
+              "Proposal: " +
+                proposalId +
+                " entered the Queue. Expiration timer has been set to: " +
+                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+            );
+            // Setup timer for the expiration time
+            await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+          }
         }
       } else {
         log("Failed to start event listener");
@@ -204,9 +212,9 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
         );
         failed = true;
       });
-
     if (
       !failed &&
+      expirationCallBounty !== null &&
       Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0
     ) {
       // Close the proposal as expired and claim the bounty
@@ -307,7 +315,9 @@ async function retryExecuteProposal(genesisProtocol, proposalId, error) {
       log("Retrying...");
       retriedCount[proposalId]++;
       let timerDelay = await calculateTimerDelay(genesisProtocol, proposalId, proposal);
-      setExecutionTimer(genesisProtocol, proposalId, timerDelay + 5000);
+      if (timerDelay != -1) {
+        setExecutionTimer(genesisProtocol, proposalId, timerDelay + 5000);
+      }
     } else {
       log("Too many retries, proposal execution abandoned.");
     }
@@ -376,7 +386,11 @@ async function calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId,
     timerDelay = 0;
   }
   const safetyDelay = 20000 // This is a small dlay to make sure time differentials will not cause an issue
-  return timerDelay + safetyDelay;
+  timerDelay += safetyDelay;
+  if (timerDelay > 2**31 - 1) {
+    return -1
+  }
+  return timerDelay
 }
 
 // Timer Delay calculator
@@ -390,7 +404,10 @@ async function calculateTimerDelay(genesisProtocol, proposalId, proposal) {
   if (timerDelay < 0) {
     timerDelay = 0;
   }
-  return timerDelay;
+  if (timerDelay > 2**31 - 1) {
+    return -1
+  }
+  return timerDelay
 }
 
 async function calculatePreBoostedTimerDelay(genesisProtocol, proposalId, proposal) {
@@ -405,7 +422,10 @@ async function calculatePreBoostedTimerDelay(genesisProtocol, proposalId, propos
   if (timerDelay < 0) {
     timerDelay = 0;
   }
-  return timerDelay;
+  if (timerDelay > 2**31 - 1) {
+    return -1
+  }
+  return timerDelay
 }
 
 // Helpers
