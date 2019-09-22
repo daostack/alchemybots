@@ -3,7 +3,7 @@ dotenv.config();
 
 function reportEmergency(data) {
     let sender = process.env.SENDER;
-    let receiver = process.env.RECEIVER;
+    let receiver = process.env.SUBGRAPH_RECEIVER;
     let password = process.env.PASSWORD;
   
     var nodemailer = require("nodemailer");
