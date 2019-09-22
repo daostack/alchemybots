@@ -1,3 +1,4 @@
+import { monitorSubgraph } from './check-subgraph-status.js';
 require("dotenv").config();
 
 let network = process.env.NETWORK;
@@ -23,6 +24,9 @@ let redeemedProposals = {};
 const retryLimit = 5;
 // List of all retries of proposals executions
 let retriedCount = {};
+
+// Subgraph Monitoring Bot timer ID
+let subgraphMonitorTimerId;
 
 ////////////// Functions //////////////
 
@@ -537,8 +541,10 @@ async function checkIfLowGas() {
 function restart() {
   console.log("Restarting Bot...");
   for (let proposalId in activeTimers) {
-    clearTimer(proposalId)
+    clearTimer(proposalId);
   }
+
+  clearTimer(subgraphMonitorTimerId);
 
   activeTimers = {};
   web3.eth.clearSubscriptions();
@@ -566,6 +572,9 @@ async function startBot() {
     await listenProposalBountyRedeemed(genesisProtocol);
   }
   setTimeout(restart, 1000 * 60 * 60 * 6)
+
+  const SUBGRAPH_TIMER_INTERVAL = 30 * 1000; // 30 Seconds
+  subgraphMonitorTimerId = setInterval(monitorSubgraph, SUBGRAPH_TIMER_INTERVAL);
 }
 
 module.exports = {
