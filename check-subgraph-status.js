@@ -36,44 +36,46 @@ function reportEmergency(data) {
       }
     });
   }
+
+  module.exports = {
+    monitorSubgraph: async function monitorSubgraph() {
+      const axios = require('axios')
   
-  export async function monitorSubgraph() {
-    const axios = require('axios')
-
-    const query = `{
-      subgraphs {
-        name
-        currentVersion {
-          deployment {
-            latestEthereumBlockNumber
-            totalEthereumBlocksCount
-            synced
-            failed
-          }
-        }
-      }
-    }`
-
-    try {
-        let { data } = (await axios.post(process.env.GRAPH_NODE_URL, { query })).data
-        for (i in data.subgraphs) {
-          if (data.subgraphs[i].name == process.env.SUBGRAPH_NAME) {
-            let failed = data.subgraphs[i].currentVersion.deployment.failed
-            let synced = data.subgraphs[i].currentVersion.deployment.synced
-            let latestEthereumBlockNumber = data.subgraphs[i].currentVersion.deployment.latestEthereumBlockNumber
-            if (!failed) {
-              if (synced) {
-                console.log("No errors detected, Subgraph running normally");
-              } else {
-                console.log("Subgraph syncing, no failure detected.");
-              }
-            } else {
-              reportEmergency("Last Synced Block: " + latestEthereumBlockNumber);
+      const query = `{
+        subgraphs {
+          name
+          currentVersion {
+            deployment {
+              latestEthereumBlockNumber
+              totalEthereumBlocksCount
+              synced
+              failed
             }
-            break
           }
         }
-    } catch (e) {
-        console.log(e)
+      }`
+  
+      try {
+          let { data } = (await axios.post(process.env.GRAPH_NODE_URL, { query })).data
+          for (i in data.subgraphs) {
+            if (data.subgraphs[i].name == process.env.SUBGRAPH_NAME) {
+              let failed = data.subgraphs[i].currentVersion.deployment.failed
+              let synced = data.subgraphs[i].currentVersion.deployment.synced
+              let latestEthereumBlockNumber = data.subgraphs[i].currentVersion.deployment.latestEthereumBlockNumber
+              if (!failed) {
+                if (synced) {
+                  console.log("No errors detected, Subgraph running normally");
+                } else {
+                  console.log("Subgraph syncing, no failure detected.");
+                }
+              } else {
+                reportEmergency("Last Synced Block: " + latestEthereumBlockNumber);
+              }
+              break
+            }
+          }
+      } catch (e) {
+          console.log(e)
+      }
     }
-  }
+  };

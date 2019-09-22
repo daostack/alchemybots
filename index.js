@@ -1,4 +1,4 @@
-import { monitorSubgraph } from './check-subgraph-status.js';
+let { monitorSubgraph } = require('./check-subgraph-status.js');
 require("dotenv").config();
 
 let network = process.env.NETWORK;
