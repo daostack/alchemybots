@@ -31,7 +31,6 @@ function reportEmergency(data) {
         console.log(error);
       } else {
         console.log("Email sent: " + info.response);
-        clearInterval(timerId);
         throw Error();
       }
     });
@@ -57,8 +56,8 @@ function reportEmergency(data) {
   
       try {
           let { data } = (await axios.post(process.env.GRAPH_NODE_URL, { query })).data
-          for (i in data.subgraphs) {
-            if (data.subgraphs[i].name == process.env.SUBGRAPH_NAME) {
+          for (let i in data.subgraphs) {
+            if (data.subgraphs[i].name === process.env.SUBGRAPH_NAME) {
               let failed = data.subgraphs[i].currentVersion.deployment.failed
               let synced = data.subgraphs[i].currentVersion.deployment.synced
               let latestEthereumBlockNumber = data.subgraphs[i].currentVersion.deployment.latestEthereumBlockNumber
@@ -74,6 +73,33 @@ function reportEmergency(data) {
               break
             }
           }
+      } catch (e) {
+          console.log(e)
+      }
+    },
+    monitorGraphNodeSubgraph: async function monitorGraphNodeSubgraph() {
+      const axios = require('axios')
+  
+      const query = `{
+        "query": "{ indexingStatusesForSubgraphName(subgraphName: "daostack/` + process.env.SUBGRAPH_NAME_GRAPHNODE + `") { subgraph synced failed chains { network ... on EthereumIndexingStatus { latestBlock { number hash } chainHeadBlock { number hash } } } } }"
+      }`
+      
+      try {
+        let { data } = (await axios.post("https://api.thegraph.com/index-node/graphql", { query })).data
+        if (data.indexingStatusesForSubgraphName !== []) {
+          let failed = data.indexingStatusesForSubgraphName[0].failed
+          let synced = data.indexingStatusesForSubgraphName[0].synced
+          let latestEthereumBlockNumber = data.indexingStatusesForSubgraphName[0].chains[0].latestBlock.number
+          if (!failed) {
+            if (synced) {
+              console.log("No errors detected, Subgraph running normally");
+            } else {
+              console.log("Subgraph syncing, no failure detected.");
+            }
+          } else {
+            reportEmergency("Last Synced Block: " + latestEthereumBlockNumber);
+          }
+        }
       } catch (e) {
           console.log(e)
       }

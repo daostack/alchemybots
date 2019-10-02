@@ -1,4 +1,4 @@
-let { monitorSubgraph } = require('./check-subgraph-status.js');
+let { monitorSubgraph, monitorGraphNodeSubgraph } = require('./check-subgraph-status.js');
 require("dotenv").config();
 
 let network = process.env.NETWORK;
@@ -27,6 +27,9 @@ let retriedCount = {};
 
 // Subgraph Monitoring Bot timer ID
 let subgraphMonitorTimerId;
+
+// Graph Node Subgraph Monitoring Bot timer ID
+let subgraphGraphNodeMonitorTimerId;
 
 ////////////// Functions //////////////
 
@@ -62,7 +65,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
         ) {
           // Calculate the milliseconds until expiration
           let timerDelay = await calculateTimerDelay(genesisProtocol, proposalId, proposal);
-          if (timerDelay != -1) {
+          if (timerDelay !== -1) {
             log(
               "Proposal: " +
                 proposalId +
@@ -80,7 +83,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
             proposalId,
             proposal
           );
-          if (timerDelay != -1) {
+          if (timerDelay !== -1) {
             log(
               "Proposal: " +
                 proposalId +
@@ -92,7 +95,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
         } else if (proposalState === 3 && proposal.state === 3) {
           // Calculate the milliseconds until expiration
           let timerDelay = await calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal);
-          if (timerDelay != -1) {
+          if (timerDelay !== -1) {
             log(
               "Proposal: " +
                 proposalId +
@@ -125,7 +128,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
         // Calculate the milliseconds until expiration
         if (proposal.state === 3) {
           let timerDelay = await calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal);
-          if (timerDelay != -1) {
+          if (timerDelay !== -1) {
             log(
               "Proposal: " +
                 proposalId +
@@ -319,7 +322,7 @@ async function retryExecuteProposal(genesisProtocol, proposalId, error) {
       log("Retrying...");
       retriedCount[proposalId]++;
       let timerDelay = await calculateTimerDelay(genesisProtocol, proposalId, proposal);
-      if (timerDelay != -1) {
+      if (timerDelay !== -1) {
         setExecutionTimer(genesisProtocol, proposalId, timerDelay + 5000);
       }
     } else {
@@ -545,6 +548,7 @@ function restart() {
   }
 
   clearTimer(subgraphMonitorTimerId);
+  clearTimer(subgraphGraphNodeMonitorTimerId);
 
   activeTimers = {};
   web3.eth.clearSubscriptions();
@@ -575,6 +579,7 @@ async function startBot() {
 
   const SUBGRAPH_TIMER_INTERVAL = 30 * 1000; // 30 Seconds
   subgraphMonitorTimerId = setInterval(monitorSubgraph, SUBGRAPH_TIMER_INTERVAL);
+  subgraphGraphNodeMonitorTimerId = setInterval(monitorGraphNodeSubgraph, SUBGRAPH_TIMER_INTERVAL);
 }
 
 module.exports = {
