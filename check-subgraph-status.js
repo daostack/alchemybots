@@ -81,7 +81,7 @@ function reportEmergency(data) {
       const axios = require('axios')
   
       const query = `{
-        "query": "{ indexingStatusesForSubgraphName(subgraphName: "daostack/` + process.env.SUBGRAPH_NAME_GRAPHNODE + `") { subgraph synced failed chains { network ... on EthereumIndexingStatus { latestBlock { number hash } chainHeadBlock { number hash } } } } }"
+        indexingStatusesForSubgraphName(subgraphName: "daostack/` + process.env.SUBGRAPH_NAME_GRAPHNODE + `") { subgraph synced failed chains { network ... on EthereumIndexingStatus { latestBlock { number hash } chainHeadBlock { number hash } } } }
       }`
       
       try {
