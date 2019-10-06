@@ -1,4 +1,4 @@
-let { monitorSubgraph, monitorGraphNodeSubgraph } = require('./check-subgraph-status.js');
+let { checkForFailure } = require('./check-subgraph-status.js');
 require("dotenv").config();
 
 let network = process.env.NETWORK;
@@ -27,9 +27,6 @@ let retriedCount = {};
 
 // Subgraph Monitoring Bot timer ID
 let subgraphMonitorTimerId;
-
-// Graph Node Subgraph Monitoring Bot timer ID
-let subgraphGraphNodeMonitorTimerId;
 
 ////////////// Functions //////////////
 
@@ -548,7 +545,6 @@ function restart() {
   }
 
   clearTimer(subgraphMonitorTimerId);
-  clearTimer(subgraphGraphNodeMonitorTimerId);
 
   activeTimers = {};
   web3.eth.clearSubscriptions();
@@ -578,8 +574,7 @@ async function startBot() {
   setTimeout(restart, 1000 * 60 * 60 * 6)
 
   const SUBGRAPH_TIMER_INTERVAL = 30 * 1000; // 30 Seconds
-  subgraphMonitorTimerId = setInterval(monitorSubgraph, SUBGRAPH_TIMER_INTERVAL);
-  subgraphGraphNodeMonitorTimerId = setInterval(monitorGraphNodeSubgraph, SUBGRAPH_TIMER_INTERVAL);
+  subgraphMonitorTimerId = setInterval(checkForFailure, SUBGRAPH_TIMER_INTERVAL);
 }
 
 module.exports = {
