@@ -48,6 +48,12 @@ function reportIDChanged(oldID, newID) {
     "Subgraph ID changed from: " + oldID + " to: " + newID
   );
 }
+function reportDataMismatch() {
+  sendEmail(
+    "Subgraph Data Mismatch.", 
+    "The data from the self-hosted subgraph does not match the data from The Graph servers. Please check for possible issues."
+  );
+}
 
   function checkStatus(isGraphNodeServer, { id, failed, synced, latestEthereumBlockNumber }) {
     if (isGraphNodeServer) {
@@ -102,7 +108,7 @@ function reportIDChanged(oldID, newID) {
           }
         }
     } catch (e) {
-        console.log(e)
+      console.log(e)
     }
   }
 
@@ -123,18 +129,57 @@ function reportIDChanged(oldID, newID) {
         return { id, failed, synced, latestEthereumBlockNumber }
       }
     } catch (e) {
-        console.log(e)
+      console.log(e)
+    }
+  }
+
+  async function verifyDataMatch() {
+    const axios = require('axios')
+
+    const query = `{
+      proposals(where: {stage: "Boosted"}, orderBy: createdAt) {
+        id
+        votes {
+          reputation
+          outcome
+          createdAt
+        }
+        stakes {
+          staker
+          outcome
+          createdAt
+        }
+        votesFor
+        votesAgainst
+        stakesFor
+        stakesAgainst
+        paramsHash
+        title
+      }
+    }`
+
+    try {
+      let { data: dataSubgraph } = (await axios.post(process.env.SUBGRAPH_URL, { query })).data
+      let { data: dataGraphNode } = (await axios.post(process.env.GRAPH_NODE_SUBGRAPH_URL, { query })).data
+      if (dataSubgraph.toString() === dataGraphNode.toString()) {
+        console.log("Data match correctly.");
+      } else {
+        reportDataMismatch();
+      }
+    } catch (e) {
+      console.log(e)
     }
   }
 
   let lastSubgraphId, lastGraphNodeSubgraphId
   module.exports = {
-    checkForFailure: async function checkForFailure() {
+    verifySubgraphs: async function verifySubgraphs() {
       try {
-        checkStatus(true, await monitorGraphNodeSubgraph())
-        checkStatus(false, await monitorSubgraph())
+        checkStatus(true, await monitorGraphNodeSubgraph());
+        checkStatus(false, await monitorSubgraph());
+        verifyDataMatch();
       } catch (e) {
         console.log(e)
       }
-    }
+    },
   };

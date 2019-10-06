@@ -1,4 +1,4 @@
-let { checkForFailure } = require('./check-subgraph-status.js');
+let { verifySubgraphs } = require('./check-subgraph-status.js');
 require("dotenv").config();
 
 let network = process.env.NETWORK;
@@ -574,7 +574,7 @@ async function startBot() {
   setTimeout(restart, 1000 * 60 * 60 * 6)
 
   const SUBGRAPH_TIMER_INTERVAL = 30 * 1000; // 30 Seconds
-  subgraphMonitorTimerId = setInterval(checkForFailure, SUBGRAPH_TIMER_INTERVAL);
+  subgraphMonitorTimerId = setInterval(verifySubgraphs, SUBGRAPH_TIMER_INTERVAL);
 }
 
 module.exports = {
