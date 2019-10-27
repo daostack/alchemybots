@@ -525,7 +525,8 @@ async function checkIfLowGas() {
       to: receiver,
       subject: "Alchemy execution bot needs more ETH",
       text:
-        "The Alchemy execution bot has low ETH balance, soon transactions will stop being broadcasted, please add add ETH to fix this."
+        "The Alchemy execution bot has low ETH balance, soon transactions will stop being broadcasted, please add add ETH to fix this.\nBot address: "
+        + web3.eth.defaultAccount
     };
 
     transporter.sendMail(mailOptions, function(error, info) {
