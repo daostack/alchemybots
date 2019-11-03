@@ -48,10 +48,18 @@ function reportIDChanged(oldID, newID) {
     "Subgraph ID changed from: " + oldID + " to: " + newID
   );
 }
+
 function reportDataMismatch() {
   sendEmail(
     "Subgraph Data Mismatch.", 
     "The data from the self-hosted subgraph does not match the data from The Graph servers. Please check for possible issues."
+  );
+}
+
+function sendError(error) {
+  sendEmail(
+    "Subgraph Query Failed.", 
+    "Subgraph query failed with error: \n" + error
   );
 }
 
@@ -109,6 +117,7 @@ function reportDataMismatch() {
         }
     } catch (e) {
       console.log(e)
+      sendError(e)
     }
   }
 
@@ -130,6 +139,7 @@ function reportDataMismatch() {
       }
     } catch (e) {
       console.log(e)
+      sendError(e)
     }
   }
 
@@ -168,6 +178,7 @@ function reportDataMismatch() {
       }
     } catch (e) {
       console.log(e)
+      sendError(e)
     }
   }
 
@@ -180,6 +191,7 @@ function reportDataMismatch() {
         verifyDataMatch();
       } catch (e) {
         console.log(e)
+        sendError(e)
       }
     },
   };
