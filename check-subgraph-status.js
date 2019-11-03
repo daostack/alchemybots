@@ -56,10 +56,10 @@ function reportDataMismatch() {
   );
 }
 
-function sendError(error) {
+function sendSubgraphError(error) {
   sendEmail(
     "Subgraph Query Failed.", 
-    "Subgraph query failed with error: \n" + error
+    "Subgraph query failed to call " + process.env.SUBGRAPH_URL + " with error: \n" + error
   );
 }
 
@@ -117,7 +117,7 @@ function sendError(error) {
         }
     } catch (e) {
       console.log(e)
-      sendError(e)
+      sendSubgraphError(e)
     }
   }
 
@@ -139,7 +139,7 @@ function sendError(error) {
       }
     } catch (e) {
       console.log(e)
-      sendError(e)
+      sendSubgraphError(e)
     }
   }
 
@@ -178,7 +178,7 @@ function sendError(error) {
       }
     } catch (e) {
       console.log(e)
-      sendError(e)
+      sendSubgraphError(e)
     }
   }
 
@@ -191,7 +191,7 @@ function sendError(error) {
         verifyDataMatch();
       } catch (e) {
         console.log(e)
-        sendError(e)
+        sendSubgraphError(e)
       }
     },
   };
