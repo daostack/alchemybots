@@ -556,9 +556,14 @@ async function startBot() {
   // Setup Genesis Protocol
   const DAOstackMigration = require("@daostack/migration");
   let migration = DAOstackMigration.migration(network);
+  let activeVMs = [];
   for (let version in migration.base) {    
     const GenesisProtocol = require("@daostack/migration/abis/" + version + "/GenesisProtocol.json");
     let gpAddress = migration.base[version].GenesisProtocol;
+    if (activeVMs.indexOf(gpAddress) !== -1 ) {
+      continue;
+    }
+    activeVMs.push(gpAddress);
     let genesisProtocol = new web3.eth.Contract(GenesisProtocol, gpAddress);
     // Subscrice to StateChange events of the Genesis Protocol
     log(
