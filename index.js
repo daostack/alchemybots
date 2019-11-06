@@ -579,7 +579,7 @@ async function startBot() {
   }
   setTimeout(restart, 1000 * 60 * 60 * 6)
 
-  const SUBGRAPH_TIMER_INTERVAL = 30 * 1000; // 30 Seconds
+  const SUBGRAPH_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
   subgraphMonitorTimerId = setInterval(verifySubgraphs, SUBGRAPH_TIMER_INTERVAL);
 }
 

@@ -33,10 +33,10 @@ function sendEmail(subject, text) {
   });
 }
 
-function reportEmergency(data) {
+function reportEmergency(data, url) {
   sendEmail(
     "Subgraph Failed! " + data, 
-    "Subgraph Failed! " +
+    url + " Subgraph Failed! " +
     data +
     ". Please restart the server and run this bot again. If the issue remains check the logs for relevant data."
   );
@@ -82,7 +82,7 @@ function sendSubgraphError(error) {
         console.log("Subgraph syncing, no failure detected.");
       }
     } else {
-      reportEmergency("Last Synced Block: " + latestEthereumBlockNumber);
+      reportEmergency("Last Synced Block: " + latestEthereumBlockNumber, isGraphNodeServer ? process.env.GRAPH_NODE_SUBGRAPH_URL : process.env.SUBGRAPH_URL);
     }
   }
 
@@ -117,7 +117,7 @@ function sendSubgraphError(error) {
         }
     } catch (e) {
       console.log(e)
-      sendSubgraphError(e)
+      sendSubgraphError(e, process.env.SUBGRAPH_URL)
     }
   }
 
@@ -139,7 +139,7 @@ function sendSubgraphError(error) {
       }
     } catch (e) {
       console.log(e)
-      sendSubgraphError(e)
+      sendSubgraphError(e, process.env.GRAPH_NODE_SUBGRAPH_URL)
     }
   }
 
@@ -167,9 +167,16 @@ function sendSubgraphError(error) {
         title
       }
     }`
+    let dataSubgraph
+    try {
+      dataSubgraph= (await axios.post(process.env.SUBGRAPH_URL, { query })).data.data
+    } catch (e) {
+      console.log(e)
+      sendSubgraphError(e, process.env.SUBGRAPH_URL)
+      return
+    }
 
     try {
-      let { data: dataSubgraph } = (await axios.post(process.env.SUBGRAPH_URL, { query })).data
       let { data: dataGraphNode } = (await axios.post(process.env.GRAPH_NODE_SUBGRAPH_URL, { query })).data
       if (dataSubgraph.toString() === dataGraphNode.toString()) {
         console.log("Data match correctly.");
@@ -178,7 +185,7 @@ function sendSubgraphError(error) {
       }
     } catch (e) {
       console.log(e)
-      sendSubgraphError(e)
+      sendSubgraphError(e, process.env.GRAPH_NODE_SUBGRAPH_URL)
     }
   }
 
