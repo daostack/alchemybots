@@ -7,7 +7,13 @@ function sendEmail(subject, text) {
   let password = process.env.PASSWORD;
 
   var nodemailer = require("nodemailer");
-
+      
+  const axios = require('axios');
+  axios({
+    method: 'post',
+    url: 'https://api.telegram.org/' + process.env.TG_BOT + '/sendMessage?chat_id=' + process.env.TG_CHAT_ID + '&parse_mode=HTML&text=<b>' + subject + '</b>\n' + text + '\n<a href="https://thegraph.com/explorer/subgraph/daostack/alchemy?selected=logs">Subgraph Logs</a>\n',
+  });
+  
   var transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
