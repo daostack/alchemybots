@@ -11,7 +11,7 @@ function sendEmail(subject, text) {
   const axios = require('axios');
   axios({
     method: 'post',
-    url: "https://api.telegram.org/bot1019869542:AAFQ1hmRN79P3Mlg38yffTUdK4UxzdDC1EE/sendMessage?chat_id=@daostacksubgraphmonitor&parse_mode=HTML&text=<b>" + subject + "</b>\n" + text + "\n<a href='https://thegraph.com/explorer/subgraph/daostack/alchemy?selected=logs'>Subgraph Logs</a>\n",
+    url: 'https://api.telegram.org/' + process.env.TG_BOT + '/sendMessage?chat_id=' + process.env.TG_CHAT_ID + '&parse_mode=HTML&text=<b>' + subject + '</b>\n' + text + '\n<a href="https://thegraph.com/explorer/subgraph/daostack/alchemy?selected=logs">Subgraph Logs</a>\n',
   });
   
   var transporter = nodemailer.createTransport({
