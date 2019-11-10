@@ -545,7 +545,7 @@ function restart() {
     clearTimer(proposalId);
   }
 
-  clearTimer(subgraphMonitorTimerId);
+  clearInterval(subgraphMonitorTimerId);
 
   activeTimers = {};
   web3.eth.clearSubscriptions();
@@ -557,7 +557,7 @@ async function startBot() {
   const DAOstackMigration = require("@daostack/migration");
   let migration = DAOstackMigration.migration(network);
   let activeVMs = [];
-  for (let version in migration.base) {    
+  for (let version in migration.base) {
     const GenesisProtocol = require("@daostack/migration/abis/" + version + "/GenesisProtocol.json");
     let gpAddress = migration.base[version].GenesisProtocol;
     if (activeVMs.indexOf(gpAddress) !== -1 ) {
