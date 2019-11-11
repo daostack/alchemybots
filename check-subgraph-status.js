@@ -48,10 +48,10 @@ function reportEmergency(data, url) {
   );
 }
 
-function reportIDChanged(oldID, newID) {
+function reportIDChanged(url, oldID, newID) {
   sendEmail(
     "Subgraph ID changed.", 
-    "Subgraph ID changed from: " + oldID + " to: " + newID
+    "Subgraph: " + url + " ID changed from: " + oldID + " to: " + newID
   );
 }
 
@@ -72,12 +72,12 @@ function sendSubgraphError(error) {
   function checkStatus(isGraphNodeServer, { id, failed, synced, latestEthereumBlockNumber }) {
     if (isGraphNodeServer) {
       if (lastGraphNodeSubgraphId != undefined && id !== lastGraphNodeSubgraphId) {
-        reportIDChanged(lastGraphNodeSubgraphId, id);
+        reportIDChanged(process.env.GRAPH_NODE_SUBGRAPH_URL, lastGraphNodeSubgraphId, id);
       }
       lastGraphNodeSubgraphId = id;
     } else {
       if (lastSubgraphId != undefined && id !== lastSubgraphId) {
-        reportIDChanged(lastSubgraphId, id);
+        reportIDChanged(process.env.SUBGRAPH_URL, lastSubgraphId, id);
       }
       lastSubgraphId = id;
     }
