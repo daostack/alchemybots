@@ -1,46 +1,10 @@
+let { sendAlert } = require('./utils.js');
+
 const dotenv = require("dotenv");
 dotenv.config();
 
-function sendEmail(subject, text) {
-  let sender = process.env.SENDER;
-  let receiver = process.env.SUBGRAPH_RECEIVER;
-  let password = process.env.PASSWORD;
-
-  var nodemailer = require("nodemailer");
-      
-  const axios = require('axios');
-  axios({
-    method: 'post',
-    url: 'https://api.telegram.org/' + process.env.TG_BOT + '/sendMessage?chat_id=' + process.env.TG_CHAT_ID + '&parse_mode=HTML&text=<b>' + subject + '</b>\n' + text + '\n<a href="https://thegraph.com/explorer/subgraph/daostack/alchemy?selected=logs">Subgraph Logs</a>\n',
-  });
-  
-  var transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: sender,
-      pass: password
-    }
-  });
-
-  var mailOptions = {
-    from: sender,
-    to: receiver,
-    subject,
-    text
-  };
-
-  transporter.sendMail(mailOptions, function(error, info) {
-    if (error) {
-      console.log(error);
-    } else {
-      console.log("Email sent: " + info.response);
-      throw Error();
-    }
-  });
-}
-
 function reportEmergency(data, url) {
-  sendEmail(
+  sendAlert(
     "Subgraph Failed! " + data, 
     url + " Subgraph Failed! " +
     data +
@@ -49,21 +13,21 @@ function reportEmergency(data, url) {
 }
 
 function reportIDChanged(url, oldID, newID) {
-  sendEmail(
+  sendAlert(
     "Subgraph ID changed.", 
     "Subgraph: " + url + " ID changed from: " + oldID + " to: " + newID
   );
 }
 
 function reportDataMismatch() {
-  sendEmail(
+  sendAlert(
     "Subgraph Data Mismatch.", 
     "The data from the self-hosted subgraph does not match the data from The Graph servers. Please check for possible issues."
   );
 }
 
 function sendSubgraphError(error) {
-  sendEmail(
+  sendAlert(
     "Subgraph Query Failed.", 
     "Subgraph query failed to call " + process.env.SUBGRAPH_URL + " with error: \n" + error
   );

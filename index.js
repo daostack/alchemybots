@@ -1,3 +1,4 @@
+let { sendAlert, extractJSON, convertMillisToTime, log } = require('./utils.js');
 let { verifySubgraphs } = require('./check-subgraph-status.js');
 require("dotenv").config();
 
@@ -432,45 +433,6 @@ async function calculatePreBoostedTimerDelay(genesisProtocol, proposalId, propos
   return timerDelay
 }
 
-// Helpers
-
-// Extract error JSON object from the error string
-function extractJSON(str) {
-  var firstOpen, firstClose, candidate;
-  firstOpen = str.indexOf("{", firstOpen + 1);
-  do {
-    firstClose = str.lastIndexOf("}");
-    if (firstClose <= firstOpen) {
-      return null;
-    }
-    do {
-      candidate = str.substring(firstOpen, firstClose + 1);
-      try {
-        var res = JSON.parse(candidate);
-        return [res, firstOpen, firstClose + 1];
-      } catch (e) {
-        log("JSON error parsing failed.");
-      }
-      firstClose = str.substr(0, firstClose).lastIndexOf("}");
-    } while (firstClose > firstOpen);
-    firstOpen = str.indexOf("{", firstOpen + 1);
-  } while (firstOpen !== -1);
-}
-
-// Get timer delay as readable time
-function convertMillisToTime(millis) {
-  let delim = " ";
-  let hours = Math.floor(millis / (1000 * 60 * 60));
-  millis -= hours * (1000 * 60 * 60);
-  let minutes = Math.floor(millis / (1000 * 60));
-  millis -= minutes * (1000 * 60);
-  let seconds = Math.floor(millis / 1000);
-  hours = hours < 10 ? "0" + hours : hours;
-  minutes = minutes < 10 ? "0" + minutes : minutes;
-  seconds = seconds < 10 ? "0" + seconds : seconds;
-  return hours + "h" + delim + minutes + "m" + delim + seconds + "s";
-}
-
 function clearTimer(proposalId) {
   if (activeTimers[proposalId] !== undefined) {
     clearTimeout(activeTimers[proposalId]);
@@ -479,63 +441,14 @@ function clearTimer(proposalId) {
   }
 }
 
-function log(message) {
-  let logMsg =
-    new Date().toLocaleString("en-US", { hour12: false }) +
-    " | " +
-    message +
-    "\n";
-  console.log(logMsg);
-  // Requiring fs module in which
-  // writeFile function is defined.
-  const fs = require("fs");
-
-  fs.readFile("logs.txt", "utf-8", (err, data) => {
-    if (err) {
-      data = "";
-    }
-    // Write data in 'logs.txt' .
-    fs.writeFile("logs.txt", data + "\n" + logMsg, err => {
-      if (err) {
-        console.log("Error writing into logs.txt: " + logMsg);
-      }
-    });
-  });
-}
-
 async function checkIfLowGas() {
   let botEthBalance = await web3.eth.getBalance(web3.eth.defaultAccount);
   if (botEthBalance < 100000000000000000) { // 0.1 ETH
-    let sender = process.env.SENDER;
-    let receiver = process.env.RECEIVER;
-    let password = process.env.PASSWORD;
+    let subject = "Alchemy execution bot needs more ETH"
+    let text = "The Alchemy execution bot has low ETH balance, soon transactions will stop being broadcasted, please add add ETH to fix this.\nBot address: "
+      + web3.eth.defaultAccount
 
-    var nodemailer = require("nodemailer");
-
-    var transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: sender,
-        pass: password
-      }
-    });
-
-    var mailOptions = {
-      from: sender,
-      to: receiver,
-      subject: "Alchemy execution bot needs more ETH",
-      text:
-        "The Alchemy execution bot has low ETH balance, soon transactions will stop being broadcasted, please add add ETH to fix this.\nBot address: "
-        + web3.eth.defaultAccount
-    };
-
-    transporter.sendMail(mailOptions, function(error, info) {
-      if (error) {
-        log(error);
-      } else {
-        log("Email sent: " + info.response);
-      }
-    });
+    sendAlert(subject, text)
   }
 }
 
@@ -553,12 +466,17 @@ function restart() {
 }
 
 async function startBot() {
+  process.on('unhandledRejection', error => {
+    log('unhandledRejection: ' + error.message);
+    sendAlert('Alchemy bot encountered an unexpected error', 'unhandledRejection: ' + error.message + '\nPlease check the bot immediatly')
+  });
+
   // Setup Genesis Protocol
   const DAOstackMigration = require("@daostack/migration");
   let migration = DAOstackMigration.migration(network);
   let activeVMs = [];
   for (let version in migration.base) {
-    const GenesisProtocol = require("@daostack/migration/abis/" + version + "/GenesisProtocol.json");
+    const GenesisProtocol = require("@daostack/migration/contracts/" + version + "/GenesisProtocol.json").abi;
     let gpAddress = migration.base[version].GenesisProtocol;
     if (activeVMs.indexOf(gpAddress) !== -1 ) {
       continue;
