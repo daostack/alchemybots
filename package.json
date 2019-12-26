@@ -21,7 +21,6 @@
     "ganache": "npm explore @daostack/migration -- npm run ganache",
     "migrate": "npm explore @daostack/migration -- npm run migrate",
     "cleandb": "npm explore @daostack/migration -- npm run cleandb",
-    "start": "node -e 'require(\"./index.js\").startBot()'",
     "jest": "jest --runInBand --forceExit"
   },
   "dependencies": {

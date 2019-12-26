@@ -80,21 +80,6 @@ function log(message) {
     message +
     "\n";
   console.log(logMsg);
-  // Requiring fs module in which
-  // writeFile function is defined.
-  const fs = require("fs");
-
-  fs.readFile("logs.txt", "utf-8", (err, data) => {
-    if (err) {
-      data = "";
-    }
-    // Write data in 'logs.txt' .
-    fs.writeFile("logs.txt", data + "\n" + logMsg, err => {
-      if (err) {
-        console.log("Error writing into logs.txt: " + logMsg);
-      }
-    });
-  });
 }
 
 module.exports = {

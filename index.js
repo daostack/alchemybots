@@ -501,6 +501,12 @@ async function startBot() {
   subgraphMonitorTimerId = setInterval(verifySubgraphs, SUBGRAPH_TIMER_INTERVAL);
 }
 
-module.exports = {
-  startBot,
-};
+if (require.main === module) {
+  startBot().catch(err => {
+    console.log(err)
+  })
+} else {
+  module.exports = {
+    startBot
+  }
+}
