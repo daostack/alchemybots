@@ -21,7 +21,9 @@
     "ganache": "npm explore @daostack/migration -- npm run ganache",
     "migrate": "npm explore @daostack/migration -- npm run migrate",
     "cleandb": "npm explore @daostack/migration -- npm run cleandb",
-    "jest": "jest --runInBand --forceExit"
+    "jest": "jest --runInBand --forceExit",
+    "start": "forever start ./forever-conf.json",
+    "stop": "forever stop alchemy-bot"
   },
   "dependencies": {
     "@daostack/ganache-cli": "6.4.3",
