@@ -461,6 +461,8 @@ function restart() {
   clearInterval(subgraphMonitorTimerId);
 
   activeTimers = {};
+  redeemedProposals = {};
+  retriedCount = {};
   web3.eth.clearSubscriptions();
   startBot();
 }
