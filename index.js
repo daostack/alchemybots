@@ -4,7 +4,6 @@ require("dotenv").config();
 
 let network = process.env.NETWORK;
 let privateKey = process.env.PRIVATE_KEY;
-let scanFromBlock = process.env.SCAN_FROM_BLOCK;
 let web3WSProvider = process.env.WEB3_WS_PROVIDER;
 let gasPrice = process.env.GAS_PRICE;
 let nonce = -1;
@@ -32,6 +31,8 @@ let subgraphMonitorTimerId;
 ////////////// Functions //////////////
 
 async function listenProposalsStateChanges(genesisProtocol) {
+  let scanFromBlock = await web3.eth.getBlockNumber() - 518400 // 3 months
+
   // Start listening to events
   genesisProtocol.events
     .StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
