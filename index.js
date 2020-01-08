@@ -1,6 +1,11 @@
-let { sendAlert, extractJSON, convertMillisToTime, log } = require('./utils.js');
+let {
+  sendAlert,
+  extractJSON,
+  convertMillisToTime,
+  log
+} = require('./utils.js');
 let { verifySubgraphs } = require('./check-subgraph-status.js');
-require("dotenv").config();
+require('dotenv').config();
 
 let network = process.env.NETWORK;
 let privateKey = process.env.PRIVATE_KEY;
@@ -9,7 +14,7 @@ let gasPrice = process.env.GAS_PRICE;
 let nonce = -1;
 
 // Setting up Web3 instance
-const Web3 = require("web3");
+const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.WebsocketProvider(web3WSProvider));
 let account = web3.eth.accounts.privateKeyToAccount(privateKey);
 web3.eth.accounts.wallet.add(account);
@@ -31,7 +36,7 @@ let subgraphMonitorTimerId;
 ////////////// Functions //////////////
 
 async function listenProposalsStateChanges(genesisProtocol) {
-  let scanFromBlock = await web3.eth.getBlockNumber() - 518400 // 3 months
+  let scanFromBlock = (await web3.eth.getBlockNumber()) - 518400; // 3 months
 
   // Start listening to events
   genesisProtocol.events
@@ -50,8 +55,13 @@ async function listenProposalsStateChanges(genesisProtocol) {
           .call();
 
         if (proposal === null) {
-          log(proposalId + ' on voting machine ' + genesisProtocol.address + 'returned as null')
-          return
+          log(
+            proposalId +
+              ' on voting machine ' +
+              genesisProtocol.address +
+              'returned as null'
+          );
+          return;
         }
 
         // Clear past timeouts if existed
@@ -63,15 +73,19 @@ async function listenProposalsStateChanges(genesisProtocol) {
           (proposal.state === 5 || proposal.state === 6)
         ) {
           // Calculate the milliseconds until expiration
-          let timerDelay = await calculateTimerDelay(genesisProtocol, proposalId, proposal);
+          let timerDelay = await calculateTimerDelay(
+            genesisProtocol,
+            proposalId,
+            proposal
+          );
           if (timerDelay !== -1) {
             log(
-              "Proposal: " +
+              'Proposal: ' +
                 proposalId +
-                " entered " +
-                (proposalState === 5 ? "Boosted" : "Quiet Ending") +
-                " Phase. Expiration timer has been set to: " +
-                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+                ' entered ' +
+                (proposalState === 5 ? 'Boosted' : 'Quiet Ending') +
+                ' Phase. Expiration timer has been set to: ' +
+                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : 'now')
             );
             // Setup timer for the expiration time
             await setExecutionTimer(genesisProtocol, proposalId, timerDelay);
@@ -84,34 +98,42 @@ async function listenProposalsStateChanges(genesisProtocol) {
           );
           if (timerDelay !== -1) {
             log(
-              "Proposal: " +
+              'Proposal: ' +
                 proposalId +
-                " entered Pre-Boosted Phase. Boosting timer has been set to: " +
-                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+                ' entered Pre-Boosted Phase. Boosting timer has been set to: ' +
+                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : 'now')
             );
-            await setPreBoostingTimer(genesisProtocol, proposalId, timerDelay + 10000);
+            await setPreBoostingTimer(
+              genesisProtocol,
+              proposalId,
+              timerDelay + 10000
+            );
           }
         } else if (proposalState === 3 && proposal.state === 3) {
           // Calculate the milliseconds until expiration
-          let timerDelay = await calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal);
+          let timerDelay = await calculateExpirationInQueueTimerDelay(
+            genesisProtocol,
+            proposalId,
+            proposal
+          );
           if (timerDelay !== -1) {
             log(
-              "Proposal: " +
+              'Proposal: ' +
                 proposalId +
-                " entered the Queue. Expiration timer has been set to: " +
-                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+                ' entered the Queue. Expiration timer has been set to: ' +
+                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : 'now')
             );
             // Setup timer for the expiration time
             await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
           }
         }
       } else {
-        log("Failed to start event listener");
+        log('Failed to start event listener');
       }
     })
-    .on("error", console.error);
+    .on('error', console.error);
 
-    genesisProtocol.events
+  genesisProtocol.events
     .NewProposal({ fromBlock: scanFromBlock }, async (error, events) => {
       if (nonce === -1) {
         nonce =
@@ -126,30 +148,34 @@ async function listenProposalsStateChanges(genesisProtocol) {
 
         // Calculate the milliseconds until expiration
         if (proposal.state === 3) {
-          let timerDelay = await calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal);
+          let timerDelay = await calculateExpirationInQueueTimerDelay(
+            genesisProtocol,
+            proposalId,
+            proposal
+          );
           if (timerDelay !== -1) {
             log(
-              "Proposal: " +
+              'Proposal: ' +
                 proposalId +
-                " entered the Queue. Expiration timer has been set to: " +
-                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : "now")
+                ' entered the Queue. Expiration timer has been set to: ' +
+                (timerDelay !== 0 ? convertMillisToTime(timerDelay) : 'now')
             );
             // Setup timer for the expiration time
             await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
           }
         }
       } else {
-        log("Failed to start event listener");
+        log('Failed to start event listener');
       }
-})
-.on("error", console.error);
+    })
+    .on('error', console.error);
 }
 
 async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
   // Setup timer for the pre-boosting time
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
-    await checkIfLowGas()
+    await checkIfLowGas();
 
     let proposal = await genesisProtocol.methods.proposals(proposalId).call();
     if (proposal.state === 4) {
@@ -160,38 +186,38 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
           {
             from: web3.eth.defaultAccount,
             gas: 300000,
-            gasPrice: web3.utils.toWei(gasPrice, "gwei"),
+            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
             nonce: ++nonce
           },
           function(error, transactionHash) {
             if (!error) {
               log(
-                "Proposal: " +
+                'Proposal: ' +
                   proposalId +
-                  " was successfully executed: " +
+                  ' was successfully executed: ' +
                   transactionHash
               );
             } else {
               log(
                 Date.now() +
-                  " | Could not execute Proposal: " +
+                  ' | Could not execute Proposal: ' +
                   proposalId +
-                  ". error returned: " +
+                  '. error returned: ' +
                   extractJSON(error.toString())[0].message
               );
             }
           }
         )
-        .on("confirmation", function(_, receipt) {
+        .on('confirmation', function(_, receipt) {
           log(
-            "Boosting transaction: " +
+            'Boosting transaction: ' +
               receipt.transactionHash +
-              " for proposal: " +
+              ' for proposal: ' +
               proposalId +
-              " was successfully confirmed."
+              ' was successfully confirmed.'
           );
         })
-        .on("error", console.error);
+        .on('error', console.error);
     }
   }, timerDelay);
 }
@@ -199,9 +225,9 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
 async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
-    await checkIfLowGas()
+    await checkIfLowGas();
     log(
-      "Proposal: " + proposalId + " has expired. Attempting to redeem proposal."
+      'Proposal: ' + proposalId + ' has expired. Attempting to redeem proposal.'
     );
 
     // Check if can close the proposal as expired and claim the bounty
@@ -211,9 +237,9 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       .call()
       .catch(error => {
         log(
-          "Could not call execute Proposal: " +
+          'Could not call execute Proposal: ' +
             proposalId +
-            ". error returned: " +
+            '. error returned: ' +
             extractJSON(error.toString())[0].message
         );
         failed = true;
@@ -230,7 +256,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
           {
             from: web3.eth.defaultAccount,
             gas: 300000,
-            gasPrice: web3.utils.toWei(gasPrice, "gwei"),
+            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
             nonce: ++nonce
           },
           async function(error) {
@@ -245,23 +271,23 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
             }, 10000);
           }
         )
-        .on("confirmation", function(_, receipt) {
+        .on('confirmation', function(_, receipt) {
           log(
-            "Execution transaction: " +
+            'Execution transaction: ' +
               receipt.transactionHash +
-              " for proposal: " +
+              ' for proposal: ' +
               proposalId +
-              " was successfully confirmed."
+              ' was successfully confirmed.'
           );
         })
-        .on("error", console.error);
+        .on('error', console.error);
     } else {
       log(
-        "Failed to execute proposal:" +
+        'Failed to execute proposal:' +
           proposalId +
-          " for " +
+          ' for ' +
           expirationCallBounty +
-          " GEN"
+          ' GEN'
       );
     }
   }, timerDelay);
@@ -270,22 +296,24 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
 async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
-    await checkIfLowGas()
-    
+    await checkIfLowGas();
+
     log(
-      "Proposal: " + proposalId + " has expired in queue. Attempting to execute proposal."
+      'Proposal: ' +
+        proposalId +
+        ' has expired in queue. Attempting to execute proposal.'
     );
 
     // Check if can close the proposal as expired and claim the bounty
-    
-      // Close the proposal as expired and claim the bounty
+
+    // Close the proposal as expired and claim the bounty
     await genesisProtocol.methods
       .execute(proposalId)
       .send(
         {
           from: web3.eth.defaultAccount,
           gas: 300000,
-          gasPrice: web3.utils.toWei(gasPrice, "gwei"),
+          gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
           nonce: ++nonce
         },
         async function(error) {
@@ -294,16 +322,16 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
           }
         }
       )
-      .on("confirmation", function(_, receipt) {
+      .on('confirmation', function(_, receipt) {
         log(
-          "Execution transaction: " +
+          'Execution transaction: ' +
             receipt.transactionHash +
-            " for proposal: " +
+            ' for proposal: ' +
             proposalId +
-            " was successfully confirmed."
+            ' was successfully confirmed.'
         );
       })
-      .on("error", console.error);
+      .on('error', console.error);
   }, timerDelay);
 }
 
@@ -312,23 +340,27 @@ async function retryExecuteProposal(genesisProtocol, proposalId, error) {
   if (proposal.state !== 2) {
     let errorMsg = extractJSON(error.toString());
     log(
-      "Could not execute Proposal: " +
+      'Could not execute Proposal: ' +
         proposalId +
-        ". error returned: " +
+        '. error returned: ' +
         (errorMsg !== null ? errorMsg[0].message : error)
     );
     if (retriedCount[proposalId] <= retryLimit) {
-      log("Retrying...");
+      log('Retrying...');
       retriedCount[proposalId]++;
-      let timerDelay = await calculateTimerDelay(genesisProtocol, proposalId, proposal);
+      let timerDelay = await calculateTimerDelay(
+        genesisProtocol,
+        proposalId,
+        proposal
+      );
       if (timerDelay !== -1) {
         setExecutionTimer(genesisProtocol, proposalId, timerDelay + 5000);
       }
     } else {
-      log("Too many retries, proposal execution abandoned.");
+      log('Too many retries, proposal execution abandoned.');
     }
   } else {
-    log("Proposal: " + proposalId + " was execute.");
+    log('Proposal: ' + proposalId + ' was execute.');
   }
 }
 
@@ -353,163 +385,173 @@ async function listenProposalBountyRedeemed(genesisProtocol) {
             web3.eth.defaultAccount.toLowerCase() === beneficiary.toLowerCase()
           ) {
             log(
-              "Proposal: " +
+              'Proposal: ' +
                 proposalId +
-                " has expired and was successfully executed: " +
+                ' has expired and was successfully executed: ' +
                 events.transactionHash +
-                "\nReward received for execution: " +
+                '\nReward received for execution: ' +
                 web3.utils.fromWei(amount.toString()) +
-                " GEN"
+                ' GEN'
             );
           } else {
             log(
-              "Proposal: " +
+              'Proposal: ' +
                 proposalId +
-                " was redeemed by another account: " +
+                ' was redeemed by another account: ' +
                 beneficiary +
-                "\nReward received for execution: " +
+                '\nReward received for execution: ' +
                 web3.utils.fromWei(amount.toString()) +
-                " GEN"
+                ' GEN'
             );
           }
         }
       }
     )
-    .on("error", console.error);
+    .on('error', console.error);
 }
 
 // Timer Delay calculator for expiration in Queue
-async function calculateExpirationInQueueTimerDelay(genesisProtocol, proposalId, proposal) {
+async function calculateExpirationInQueueTimerDelay(
+  genesisProtocol,
+  proposalId,
+  proposal
+) {
   // Calculate the milliseconds until expiring in queue
-  let proposedTime = (await genesisProtocol.methods
-    .getProposalTimes(proposalId)
-    .call())[0].toNumber();
-  let queuedVotePeriod = (await genesisProtocol.methods
-    .parameters(proposal.paramsHash)
-    .call()).queuedVotePeriodLimit.toNumber();
+  let proposedTime = (
+    await genesisProtocol.methods.getProposalTimes(proposalId).call()
+  )[0].toNumber();
+  let queuedVotePeriod = (
+    await genesisProtocol.methods.parameters(proposal.paramsHash).call()
+  ).queuedVotePeriodLimit.toNumber();
   let timerDelay = (queuedVotePeriod + proposedTime) * 1000 - Date.now();
   if (timerDelay < 0) {
     timerDelay = 0;
   }
-  const safetyDelay = 20000 // This is a small dlay to make sure time differentials will not cause an issue
+  const safetyDelay = 20000; // This is a small dlay to make sure time differentials will not cause an issue
   timerDelay += safetyDelay;
-  if (timerDelay > 2**31 - 1) {
-    return -1
+  if (timerDelay > 2 ** 31 - 1) {
+    return -1;
   }
-  return timerDelay
+  return timerDelay;
 }
 
 // Timer Delay calculator
 async function calculateTimerDelay(genesisProtocol, proposalId, proposal) {
   // Calculate the milliseconds until boosting ends
-  let boostedTime = (await genesisProtocol.methods
-    .getProposalTimes(proposalId)
-    .call())[1].toNumber();
+  let boostedTime = (
+    await genesisProtocol.methods.getProposalTimes(proposalId).call()
+  )[1].toNumber();
   let boostingPeriod = proposal.currentBoostedVotePeriodLimit.toNumber();
   let timerDelay = (boostingPeriod + boostedTime) * 1000 - Date.now();
   if (timerDelay < 0) {
     timerDelay = 0;
   }
-  if (timerDelay > 2**31 - 1) {
-    return -1
+  if (timerDelay > 2 ** 31 - 1) {
+    return -1;
   }
-  return timerDelay
+  return timerDelay;
 }
 
-async function calculatePreBoostedTimerDelay(genesisProtocol, proposalId, proposal) {
+async function calculatePreBoostedTimerDelay(
+  genesisProtocol,
+  proposalId,
+  proposal
+) {
   // Calculate the milliseconds until pre-boosting ends
-  let preBoostedTime = (await genesisProtocol.methods
-    .getProposalTimes(proposalId)
-    .call())[2].toNumber();
-  let preBoostingPeriod = (await genesisProtocol.methods
-    .parameters(proposal.paramsHash)
-    .call()).preBoostedVotePeriodLimit.toNumber();
+  let preBoostedTime = (
+    await genesisProtocol.methods.getProposalTimes(proposalId).call()
+  )[2].toNumber();
+  let preBoostingPeriod = (
+    await genesisProtocol.methods.parameters(proposal.paramsHash).call()
+  ).preBoostedVotePeriodLimit.toNumber();
   let timerDelay = (preBoostingPeriod + preBoostedTime) * 1000 - Date.now();
   if (timerDelay < 0) {
     timerDelay = 0;
   }
-  if (timerDelay > 2**31 - 1) {
-    return -1
+  if (timerDelay > 2 ** 31 - 1) {
+    return -1;
   }
-  return timerDelay
+  return timerDelay;
 }
 
 function clearTimer(proposalId) {
   if (activeTimers[proposalId] !== undefined) {
     clearTimeout(activeTimers[proposalId]);
     activeTimers[proposalId] = undefined;
-    log("Proposal: " + proposalId + " state changed. Stopping timer.");
+    log('Proposal: ' + proposalId + ' state changed. Stopping timer.');
   }
 }
 
 async function checkIfLowGas() {
   let botEthBalance = await web3.eth.getBalance(web3.eth.defaultAccount);
-  if (botEthBalance < 100000000000000000) { // 0.1 ETH
-    let subject = "Alchemy execution bot needs more ETH"
-    let text = "The Alchemy execution bot has low ETH balance, soon transactions will stop being broadcasted, please add add ETH to fix this.\nBot address: "
-      + web3.eth.defaultAccount
+  if (botEthBalance < 100000000000000000) {
+    // 0.1 ETH
+    let subject = 'Alchemy execution bot needs more ETH';
+    let text =
+      'The Alchemy execution bot has low ETH balance, soon transactions will stop being broadcasted, please add add ETH to fix this.\nBot address: ' +
+      web3.eth.defaultAccount;
 
-    sendAlert(subject, text)
+    sendAlert(subject, text);
   }
 }
 
 function restart() {
-  console.log("Restarting Bot...");
-  for (let proposalId in activeTimers) {
-    clearTimer(proposalId);
-  }
-
-  clearInterval(subgraphMonitorTimerId);
-
-  activeTimers = {};
-  redeemedProposals = {};
-  retriedCount = {};
-  web3.eth.clearSubscriptions();
-  startBot();
+  log('Restarting Bot...');
+  process.exit(0);
 }
 
 async function startBot() {
   process.on('unhandledRejection', error => {
     log('unhandledRejection: ' + error.message);
-    sendAlert('Alchemy bot encountered an unexpected error', 'unhandledRejection: ' + error.message + '\nPlease check the bot immediatly')
+    sendAlert(
+      'Alchemy bot encountered an unexpected error',
+      'unhandledRejection: ' +
+        error.message +
+        '\nPlease check the bot immediately'
+    );
   });
 
   // Setup Genesis Protocol
-  const DAOstackMigration = require("@daostack/migration");
+  const DAOstackMigration = require('@daostack/migration');
   let migration = DAOstackMigration.migration(network);
   let activeVMs = [];
   for (let version in migration.base) {
-    const GenesisProtocol = require("@daostack/migration/contracts/" + version + "/GenesisProtocol.json").abi;
+    const GenesisProtocol = require('@daostack/migration/contracts/' +
+      version +
+      '/GenesisProtocol.json').abi;
     let gpAddress = migration.base[version].GenesisProtocol;
-    if (activeVMs.indexOf(gpAddress) !== -1 ) {
+    if (activeVMs.indexOf(gpAddress) !== -1) {
       continue;
     }
     activeVMs.push(gpAddress);
     let genesisProtocol = new web3.eth.Contract(GenesisProtocol, gpAddress);
     // Subscrice to StateChange events of the Genesis Protocol
     log(
-      "Started listening to StateChange events of Genesis Protocol: " +
+      'Started listening to StateChange events of Genesis Protocol: ' +
         gpAddress +
-        " on " +
+        ' on ' +
         network +
-        " network"
+        ' network'
     );
 
     await listenProposalsStateChanges(genesisProtocol);
     await listenProposalBountyRedeemed(genesisProtocol);
   }
-  setTimeout(restart, 1000 * 60 * 60 * 6)
+  setTimeout(restart, 1000 * 60 * 60 * 6);
 
   const SUBGRAPH_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  subgraphMonitorTimerId = setInterval(verifySubgraphs, SUBGRAPH_TIMER_INTERVAL);
+  subgraphMonitorTimerId = setInterval(
+    verifySubgraphs,
+    SUBGRAPH_TIMER_INTERVAL
+  );
 }
 
 if (require.main === module) {
   startBot().catch(err => {
-    console.log(err)
-  })
+    console.log(err);
+  });
 } else {
   module.exports = {
     startBot
-  }
+  };
 }
