@@ -233,7 +233,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
     // Check if can close the proposal as expired and claim the bounty
     let failed = false;
     let expirationCallBounty = await genesisProtocol.methods
-      .execute(proposalId)
+      .executeBoosted(proposalId)
       .call()
       .catch(error => {
         log(
