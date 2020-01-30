@@ -40,15 +40,16 @@ function sendSubgraphError(error) {
 }
 
 async function updateAlchemySettings() {
-  const exportingString = "module.exports = { settings };"
-  let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/settings.ts')).data
-      fs.writeFileSync(
-        './alchemy-settings.js',
-        alchemySettingsFile.split('export')[1] + exportingString,
-        'utf-8'
-      )
-      let alchemySettings = require('./alchemy-settings').settings;
-      GRAPH_NODE_SUBGRAPH_URL = alchemySettings.production.graphqlHttpProvider;
+  const exportingString = "module.exports = { settings };";
+  let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/settings.ts')).data;
+  fs.writeFileSync(
+    './alchemy-settings.js',
+    alchemySettingsFile.split('export')[1] + exportingString,
+    'utf-8'
+  );
+  let alchemySettings = require('./alchemy-settings').settings;
+  GRAPH_NODE_SUBGRAPH_URL = alchemySettings.production.graphqlHttpProvider;
+  console.log('Alchemy production subgraph URL: ' + GRAPH_NODE_SUBGRAPH_URL);
 }
 
   function checkStatus(isGraphNodeServer, { id, failed, synced, latestEthereumBlockNumber }) {
