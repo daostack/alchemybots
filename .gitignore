@@ -3,3 +3,4 @@ node_modules
 .vscode
 out.log
 error.log
+alchemy-settings.js

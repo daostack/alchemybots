@@ -3,6 +3,12 @@ let { sendAlert } = require('./utils.js');
 const dotenv = require("dotenv");
 dotenv.config();
 
+const axios = require('axios')
+axios.defaults.timeout = 30000;
+const fs = require('fs')
+
+let GRAPH_NODE_SUBGRAPH_URL = '';
+
 function reportEmergency(data, url) {
   sendAlert(
     "Subgraph Failed! " + data, 
@@ -33,10 +39,23 @@ function sendSubgraphError(error) {
   );
 }
 
+async function updateAlchemySettings() {
+  const exportingString = "module.exports = { settings };";
+  let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/settings.ts')).data;
+  fs.writeFileSync(
+    './alchemy-settings.js',
+    alchemySettingsFile.split('export')[1] + exportingString,
+    'utf-8'
+  );
+  let alchemySettings = require('./alchemy-settings').settings;
+  GRAPH_NODE_SUBGRAPH_URL = alchemySettings.production.graphqlHttpProvider;
+  console.log('Alchemy production subgraph URL: ' + GRAPH_NODE_SUBGRAPH_URL);
+}
+
   function checkStatus(isGraphNodeServer, { id, failed, synced, latestEthereumBlockNumber }) {
     if (isGraphNodeServer) {
       if (lastGraphNodeSubgraphId != undefined && id !== lastGraphNodeSubgraphId) {
-        reportIDChanged(process.env.GRAPH_NODE_SUBGRAPH_URL, lastGraphNodeSubgraphId, id);
+        reportIDChanged(GRAPH_NODE_SUBGRAPH_URL, lastGraphNodeSubgraphId, id);
       }
       lastGraphNodeSubgraphId = id;
     } else {
@@ -52,12 +71,11 @@ function sendSubgraphError(error) {
         console.log("Subgraph syncing, no failure detected.");
       }
     } else {
-      reportEmergency("Last Synced Block: " + latestEthereumBlockNumber, isGraphNodeServer ? process.env.GRAPH_NODE_SUBGRAPH_URL : process.env.SUBGRAPH_URL);
+      reportEmergency("Last Synced Block: " + latestEthereumBlockNumber, isGraphNodeServer ? GRAPH_NODE_SUBGRAPH_URL : process.env.SUBGRAPH_URL);
     }
   }
 
   async function monitorSubgraph() {
-    const axios = require('axios')
 
     const query = `{
       subgraphs {
@@ -92,8 +110,6 @@ function sendSubgraphError(error) {
   }
 
   async function monitorGraphNodeSubgraph() {
-    const axios = require('axios')
-
     const query = `{
       indexingStatusesForSubgraphName(subgraphName: "daostack/` + process.env.SUBGRAPH_NAME_GRAPHNODE + `") { subgraph synced failed chains { network ... on EthereumIndexingStatus { latestBlock { number hash } chainHeadBlock { number hash } } } }
     }`
@@ -109,13 +125,11 @@ function sendSubgraphError(error) {
       }
     } catch (e) {
       console.log(e)
-      sendSubgraphError(e, process.env.GRAPH_NODE_SUBGRAPH_URL)
+      sendSubgraphError(e, GRAPH_NODE_SUBGRAPH_URL)
     }
   }
 
   async function verifyDataMatch() {
-    const axios = require('axios')
-
     const query = `{
       proposals(where: {stage: "Boosted"}, orderBy: createdAt) {
         id
@@ -147,7 +161,7 @@ function sendSubgraphError(error) {
     }
 
     try {
-      let { data: dataGraphNode } = (await axios.post(process.env.GRAPH_NODE_SUBGRAPH_URL, { query })).data
+      let { data: dataGraphNode } = (await axios.post(GRAPH_NODE_SUBGRAPH_URL, { query })).data
       if (dataSubgraph.toString() === dataGraphNode.toString()) {
         console.log("Data match correctly.");
       } else {
@@ -155,7 +169,7 @@ function sendSubgraphError(error) {
       }
     } catch (e) {
       console.log(e)
-      sendSubgraphError(e, process.env.GRAPH_NODE_SUBGRAPH_URL)
+      sendSubgraphError(e, GRAPH_NODE_SUBGRAPH_URL)
     }
   }
 
@@ -163,6 +177,7 @@ function sendSubgraphError(error) {
   module.exports = {
     verifySubgraphs: async function verifySubgraphs() {
       try {
+        await updateAlchemySettings();
         checkStatus(true, await monitorGraphNodeSubgraph());
         checkStatus(false, await monitorSubgraph());
         verifyDataMatch();
