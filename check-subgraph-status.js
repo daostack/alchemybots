@@ -55,7 +55,7 @@ async function updateAlchemySettings() {
     'utf-8'
   );
   let alchemySettings = require('./alchemy-settings').settings;
-  if (alchemySettings.production.graphqlHttpProvider !== GRAPH_NODE_SUBGRAPH_URL) {
+  if (alchemySettings.production.graphqlHttpProvider !== GRAPH_NODE_SUBGRAPH_URL && GRAPH_NODE_SUBGRAPH_URL !== '') {
     sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.production.graphqlHttpProvider)
   }
   GRAPH_NODE_SUBGRAPH_URL = alchemySettings.production.graphqlHttpProvider;
