@@ -39,6 +39,13 @@ function sendSubgraphError(error) {
   );
 }
 
+function sendAlchemySwitchedSubgraph(prevURL, newURL) {
+  sendAlert(
+    "Alchemy Switched Production Subgraph URL", 
+    "Alchemy has switched its production URL from: " + prevURL + " to: " + newURL
+  );
+}
+
 async function updateAlchemySettings() {
   const exportingString = "module.exports = { settings };";
   let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/settings.ts')).data;
@@ -48,7 +55,11 @@ async function updateAlchemySettings() {
     'utf-8'
   );
   let alchemySettings = require('./alchemy-settings').settings;
+  if (alchemySettings.production.graphqlHttpProvider !== GRAPH_NODE_SUBGRAPH_URL) {
+    sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.production.graphqlHttpProvider)
+  }
   GRAPH_NODE_SUBGRAPH_URL = alchemySettings.production.graphqlHttpProvider;
+  
   console.log('Alchemy production subgraph URL: ' + GRAPH_NODE_SUBGRAPH_URL);
 }
 
