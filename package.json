@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@daostack/ganache-cli": "6.4.3",
-    "@daostack/migration": "0.0.1-rc.36-v4",
+    "@daostack/migration": "0.0.1-rc.39-v2",
     "axios": "^0.19.0",
     "dotenv": "^8.0.0",
     "fstream": "^1.0.12",
