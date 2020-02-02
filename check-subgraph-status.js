@@ -122,7 +122,7 @@ async function updateAlchemySettings() {
 
   async function monitorGraphNodeSubgraph() {
     const query = `{
-      indexingStatusesForSubgraphName(subgraphName: "daostack/` + process.env.SUBGRAPH_NAME_GRAPHNODE + `") { subgraph synced failed chains { network ... on EthereumIndexingStatus { latestBlock { number hash } chainHeadBlock { number hash } } } }
+      indexingStatusesForSubgraphName(subgraphName: "daostack/` + GRAPH_NODE_SUBGRAPH_URL.split('https://api.thegraph.com/subgraphs/name/daostack/')[1] + `") { subgraph synced failed chains { network ... on EthereumIndexingStatus { latestBlock { number hash } chainHeadBlock { number hash } } } }
     }`
 
     try {
