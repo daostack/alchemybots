@@ -7,6 +7,7 @@ const axios = require('axios')
 axios.defaults.timeout = 30000;
 const fs = require('fs')
 
+let lastSubgraphId, lastGraphNodeSubgraphId
 let GRAPH_NODE_SUBGRAPH_URL = '';
 
 function reportEmergency(data, url) {
@@ -32,10 +33,10 @@ function reportDataMismatch() {
   );
 }
 
-function sendSubgraphError(error) {
+function sendSubgraphError(error, url) {
   sendAlert(
     "Subgraph Query Failed.", 
-    "Subgraph query failed to call " + process.env.SUBGRAPH_URL + " with error: \n" + error
+    "Subgraph query failed to call " + url + " with error: \n" + error
   );
 }
 
@@ -184,7 +185,6 @@ async function updateAlchemySettings() {
     }
   }
 
-  let lastSubgraphId, lastGraphNodeSubgraphId
   module.exports = {
     verifySubgraphs: async function verifySubgraphs() {
       try {
@@ -194,7 +194,7 @@ async function updateAlchemySettings() {
         verifyDataMatch();
       } catch (e) {
         console.log(e)
-        sendSubgraphError(e)
+        sendSubgraphError(e, '')
       }
     },
   };
