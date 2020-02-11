@@ -52,7 +52,7 @@ async function updateAlchemySettings() {
   let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/settings.ts')).data;
   fs.writeFileSync(
     './alchemy-settings.js',
-    alchemySettingsFile.split('export')[1].replace(/as any/g, "") + exportingString,
+    alchemySettingsFile.split('export')[1].replace(/as any/g, "").replace(/package: isMobileBrowser() ? null : WalletConnectProvider,/g, "") + exportingString,
     'utf-8'
   );
   let alchemySettings = require('./alchemy-settings').settings;
