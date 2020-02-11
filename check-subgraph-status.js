@@ -66,9 +66,9 @@ async function updateAlchemySettings() {
   );
   let alchemySettings = require('./alchemy-settings').settings;
   if (alchemySettings.main.graphqlHttpProvider !== GRAPH_NODE_SUBGRAPH_URL && GRAPH_NODE_SUBGRAPH_URL !== '') {
-    sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.production.graphqlHttpProvider)
+    sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.main.graphqlHttpProvider)
   }
-  GRAPH_NODE_SUBGRAPH_URL = alchemySettings.production.graphqlHttpProvider;
+  GRAPH_NODE_SUBGRAPH_URL = alchemySettings.main.graphqlHttpProvider;
   
   console.log('Alchemy production subgraph URL: ' + GRAPH_NODE_SUBGRAPH_URL);
 }
