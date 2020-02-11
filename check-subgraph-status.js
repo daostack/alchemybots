@@ -52,11 +52,20 @@ async function updateAlchemySettings() {
   let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/settings.ts')).data;
   fs.writeFileSync(
     './alchemy-settings.js',
-    ('export const settings' + (alchemySettingsFile.split('export const settings')[1])).split('export')[1].replace(/as any/g, "").replace(/package: isMobileBrowser() ? null : WalletConnectProvider,/g, "") + exportingString,
+    ('export const settings' +
+    (alchemySettingsFile.split('export const settings')[1])).
+    split('export')[1].
+    replace(/as any/g, "").
+    replace(/BurnerConnectProvider/g, "null").
+    replace(/Portis/g, "null").
+    replace(/Fortmatic/g, "null").
+    replace(/WalletConnectProvider/g, "null").
+    replace(/isMobileBrowser\(\) \? null : null/g, "null")
+     + exportingString,
     'utf-8'
   );
   let alchemySettings = require('./alchemy-settings').settings;
-  if (alchemySettings.production.graphqlHttpProvider !== GRAPH_NODE_SUBGRAPH_URL && GRAPH_NODE_SUBGRAPH_URL !== '') {
+  if (alchemySettings.main.graphqlHttpProvider !== GRAPH_NODE_SUBGRAPH_URL && GRAPH_NODE_SUBGRAPH_URL !== '') {
     sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.production.graphqlHttpProvider)
   }
   GRAPH_NODE_SUBGRAPH_URL = alchemySettings.production.graphqlHttpProvider;
