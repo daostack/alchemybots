@@ -61,9 +61,9 @@ async function updateAlchemySettings() {
     replace(/Fortmatic/g, "null").
     replace(/WalletConnectProvider/g, "null").
     replace(/isMobileBrowser\(\) \? null : null/g, "null").
-    replace(/getWeb3ConnectProviderOptions("rinkeby"),/g, "").
-    replace(/getWeb3ConnectProviderOptions("xdai"),/g, "").
-    replace(/getWeb3ConnectProviderOptions("mainnet"),/g, "")
+    replace(/getWeb3ConnectProviderOptions("rinkeby"),/g, "null").
+    replace(/getWeb3ConnectProviderOptions("xdai"),/g, "null").
+    replace(/getWeb3ConnectProviderOptions("mainnet"),/g, "null")
      + exportingString,
     'utf-8'
   );
