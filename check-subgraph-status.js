@@ -56,14 +56,14 @@ async function updateAlchemySettings() {
     (alchemySettingsFile.split('export const settings')[1])).
     split('export')[1].
     replace(/as any/g, "").
+    replace(/isMobileBrowser\(\) \? null : null/g, "null").
+    replace(/getWeb3ConnectProviderOptions\("rinkeby"\),/g, "null").
+    replace(/getWeb3ConnectProviderOptions\("xdai"\),/g, "null").
+    replace(/getWeb3ConnectProviderOptions\("mainnet"\),/g, "null").
     replace(/BurnerConnectProvider/g, "null").
     replace(/Portis/g, "null").
     replace(/Fortmatic/g, "null").
-    replace(/WalletConnectProvider/g, "null").
-    replace(/isMobileBrowser\(\) \? null : null/g, "null").
-    replace(/getWeb3ConnectProviderOptions("rinkeby"),/g, "null").
-    replace(/getWeb3ConnectProviderOptions("xdai"),/g, "null").
-    replace(/getWeb3ConnectProviderOptions("mainnet"),/g, "null")
+    replace(/WalletConnectProvider/g, "null")
      + exportingString,
     'utf-8'
   );
