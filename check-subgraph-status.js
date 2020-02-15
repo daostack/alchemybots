@@ -60,7 +60,10 @@ async function updateAlchemySettings() {
     replace(/Portis/g, "null").
     replace(/Fortmatic/g, "null").
     replace(/WalletConnectProvider/g, "null").
-    replace(/isMobileBrowser\(\) \? null : null/g, "null")
+    replace(/isMobileBrowser\(\) \? null : null/g, "null").
+    replace(/getWeb3ConnectProviderOptions("rinkeby"),/g, "").
+    replace(/getWeb3ConnectProviderOptions("xdai"),/g, "").
+    replace(/getWeb3ConnectProviderOptions("mainnet"),/g, "")
      + exportingString,
     'utf-8'
   );
