@@ -57,6 +57,7 @@ async function updateAlchemySettings() {
     split('export')[1].
     replace(/as any/g, "").
     replace(/isMobileBrowser\(\) \? null : null/g, "null").
+    replace(/getWeb3ConnectProviderOptions\("kovan"\),/g, "null").
     replace(/getWeb3ConnectProviderOptions\("rinkeby"\),/g, "null").
     replace(/getWeb3ConnectProviderOptions\("xdai"\),/g, "null").
     replace(/getWeb3ConnectProviderOptions\("mainnet"\),/g, "null").
