@@ -51,7 +51,7 @@ async function updateAlchemySettings() {
   let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/subgraph_endpoints.json')).data;
   fs.writeFileSync(
     './alchemy-settings.json',
-    alchemySettingsFile,
+    JSON.stringify(alchemySettingsFile),
     'utf-8'
   );
   let alchemySettings = require('./alchemy-settings.json');
