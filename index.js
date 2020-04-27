@@ -512,34 +512,34 @@ async function startBot() {
   });
 
   // Setup Genesis Protocol
-  const DAOstackMigration = require('@daostack/migration');
-  let migration = DAOstackMigration.migration(network);
-  let activeVMs = [];
-  for (let version in migration.base) {
-    const GenesisProtocol = require('@daostack/migration/contracts/' +
-      version +
-      '/GenesisProtocol.json').abi;
-    let gpAddress = migration.base[version].GenesisProtocol;
-    if (activeVMs.indexOf(gpAddress) !== -1) {
-      continue;
-    }
-    activeVMs.push(gpAddress);
-    let genesisProtocol = new web3.eth.Contract(GenesisProtocol, gpAddress);
-    // Subscrice to StateChange events of the Genesis Protocol
-    log(
-      'Started listening to StateChange events of Genesis Protocol: ' +
-        gpAddress +
-        ' on ' +
-        network +
-        ' network'
-    );
+  // const DAOstackMigration = require('@daostack/migration');
+  // let migration = DAOstackMigration.migration(network);
+  // let activeVMs = [];
+  // for (let version in migration.base) {
+  //   const GenesisProtocol = require('@daostack/migration/contracts/' +
+  //     version +
+  //     '/GenesisProtocol.json').abi;
+  //   let gpAddress = migration.base[version].GenesisProtocol;
+  //   if (activeVMs.indexOf(gpAddress) !== -1) {
+  //     continue;
+  //   }
+  //   activeVMs.push(gpAddress);
+  //   let genesisProtocol = new web3.eth.Contract(GenesisProtocol, gpAddress);
+  //   // Subscrice to StateChange events of the Genesis Protocol
+  //   log(
+  //     'Started listening to StateChange events of Genesis Protocol: ' +
+  //       gpAddress +
+  //       ' on ' +
+  //       network +
+  //       ' network'
+  //   );
 
-    await listenProposalsStateChanges(genesisProtocol);
-    await listenProposalBountyRedeemed(genesisProtocol);
-  }
-  setTimeout(restart, 1000 * 60 * 60 * 6);
+  //   await listenProposalsStateChanges(genesisProtocol);
+  //   await listenProposalBountyRedeemed(genesisProtocol);
+  // }
+  // setTimeout(restart, 1000 * 60 * 60 * 6);
 
-  const SUBGRAPH_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  const SUBGRAPH_TIMER_INTERVAL = 1 * 60 * 1000; // 5 minutes
   subgraphMonitorTimerId = setInterval(
     verifySubgraphs,
     SUBGRAPH_TIMER_INTERVAL

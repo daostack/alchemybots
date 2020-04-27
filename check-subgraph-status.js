@@ -48,31 +48,17 @@ function sendAlchemySwitchedSubgraph(prevURL, newURL) {
 }
 
 async function updateAlchemySettings() {
-  const exportingString = "module.exports = { settings };";
-  let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/settings.ts')).data;
+  let alchemySettingsFile = (await axios.get('https://raw.githubusercontent.com/daostack/alchemy/master/src/subgraph_endpoints.json')).data;
   fs.writeFileSync(
-    './alchemy-settings.js',
-    ('export const settings' +
-    (alchemySettingsFile.split('export const settings')[1])).
-    split('export')[1].
-    replace(/as any/g, "").
-    replace(/isMobileBrowser\(\) \? null : null/g, "null").
-    replace(/getWeb3ConnectProviderOptions\("kovan"\),/g, "null").
-    replace(/getWeb3ConnectProviderOptions\("rinkeby"\),/g, "null").
-    replace(/getWeb3ConnectProviderOptions\("xdai"\),/g, "null").
-    replace(/getWeb3ConnectProviderOptions\("mainnet"\),/g, "null").
-    replace(/BurnerConnectProvider/g, "null").
-    replace(/Portis/g, "null").
-    replace(/Fortmatic/g, "null").
-    replace(/WalletConnectProvider/g, "null")
-     + exportingString,
+    './alchemy-settings.json',
+    alchemySettingsFile,
     'utf-8'
   );
-  let alchemySettings = require('./alchemy-settings').settings;
-  if (alchemySettings.main.graphqlHttpProvider !== GRAPH_NODE_SUBGRAPH_URL && GRAPH_NODE_SUBGRAPH_URL !== '') {
-    sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.main.graphqlHttpProvider)
+  let alchemySettings = require('./alchemy-settings.json');
+  if (alchemySettings.http_main !== GRAPH_NODE_SUBGRAPH_URL && GRAPH_NODE_SUBGRAPH_URL !== '') {
+    sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.http_main)
   }
-  GRAPH_NODE_SUBGRAPH_URL = alchemySettings.main.graphqlHttpProvider;
+  GRAPH_NODE_SUBGRAPH_URL = alchemySettings.http_main;
   
   console.log('Alchemy production subgraph URL: ' + GRAPH_NODE_SUBGRAPH_URL);
 }
