@@ -512,14 +512,17 @@ async function startBot() {
   });
 
   // Setup Genesis Protocol
-  const DAOstackMigration = require('@daostack/migration');
+  const DAOstackMigration = require('@daostack/migration-experimental');
   let migration = DAOstackMigration.migration(network);
   let activeVMs = [];
-  for (let version in migration.base) {
-    const GenesisProtocol = require('@daostack/migration/contracts/' +
+  for (let version in migration.package) {
+    if (version !== require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0]) {
+      continue;
+    }
+    const GenesisProtocol = require('@daostack/migration-experimental/contracts/' +
       version +
       '/GenesisProtocol.json').abi;
-    let gpAddress = migration.base[version].GenesisProtocol;
+    let gpAddress = migration.package[version].GenesisProtocol;
     if (activeVMs.indexOf(gpAddress) !== -1) {
       continue;
     }
@@ -539,11 +542,11 @@ async function startBot() {
   }
   setTimeout(restart, 1000 * 60 * 60 * 6);
 
-  const SUBGRAPH_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  subgraphMonitorTimerId = setInterval(
-    verifySubgraphs,
-    SUBGRAPH_TIMER_INTERVAL
-  );
+  // const SUBGRAPH_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  // subgraphMonitorTimerId = setInterval(
+  //   verifySubgraphs,
+  //   SUBGRAPH_TIMER_INTERVAL
+  // );
 }
 
 if (require.main === module) {

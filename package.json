@@ -18,9 +18,9 @@
   "scripts": {
     "lint": "eslint .",
     "lint-fix": "eslint . --fix",
-    "ganache": "npm explore @daostack/migration -- npm run ganache",
-    "migrate": "npm explore @daostack/migration -- npm run migrate",
-    "cleandb": "npm explore @daostack/migration -- npm run cleandb",
+    "ganache": "npm explore @daostack/migration-experimental -- npm run ganache",
+    "migrate": "npm explore @daostack/migration-experimental -- npm run migrate",
+    "cleandb": "npm explore @daostack/migration-experimental -- npm run cleandb",
     "jest": "jest --runInBand --forceExit",
     "start": "rm out.log && rm error.log && forever start ./forever-conf.json",
     "stop": "forever stop alchemy-bot",
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@daostack/ganache-cli": "6.4.3",
-    "@daostack/migration": "0.0.1-rc.41-v6",
+    "@daostack/migration-experimental": "0.1.1-rc.16-v0",
     "axios": "^0.19.0",
     "dotenv": "^8.0.0",
     "fstream": "^1.0.12",
