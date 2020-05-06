@@ -5,7 +5,11 @@ let {
   log
 } = require('./utils.js');
 let { verifySubgraphs } = require('./check-subgraph-status.js');
+let { getStakingInstructions } = require('./staking-bot.js');
 require('dotenv').config();
+
+const axios = require('axios')
+axios.defaults.timeout = 30000;
 
 let network = process.env.NETWORK;
 let privateKey = process.env.PRIVATE_KEY;
@@ -34,6 +38,75 @@ let retriedCount = {};
 let subgraphMonitorTimerId;
 
 ////////////// Functions //////////////
+
+// Staking
+
+async function stake(proposalId, stakeAmount, genesisProtocol) {
+  await genesisProtocol.methods
+  .stake(proposalId, 1, stakeAmount)
+  .send(
+    {
+      from: web3.eth.defaultAccount,
+      gas: 300000,
+      gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+      nonce: ++nonce
+    },
+    async function(error) {
+      if (error) {
+        log(error);
+      }
+    }
+  )
+  .on('confirmation', function(_, receipt) {
+    log(
+      'Staking transaction: ' +
+        receipt.transactionHash +
+        ' for proposal: ' +
+        proposalId +
+        ' was successfully confirmed.'
+    );
+  })
+  .on('error', console.error);
+}
+
+async function runStaking() {
+  // Currently limited to first 1000 open proposals.
+  const query = `{
+  proposals(where: {stage: "Queued"}, orderBy: createdAt, first: 1000) {
+      id
+      stakes {
+        staker
+      }
+      votesFor
+      votesAgainst
+      stakesFor
+      stakesAgainst
+      votingMachine
+      dao {
+        id
+        nativeReputation {
+          totalSupply
+        }
+      }
+    }
+  }`
+
+  try {
+      let { data } = (await axios.post("https://api.thegraph.com/subgraphs/name/daostack/v7_5_exp_rinkeby", { query })).data
+      let { proposals } = data
+      let stakingList = getStakingInstructions(proposals, web3.eth.defaultAccount)
+      for (let proposal of proposals) {
+          if (stakingList[proposal.id] !== 0) {
+            let version = require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0];
+            const GenesisProtocol = require('@daostack/migration-experimental/contracts/' + version + '/GenesisProtocol.json').abi;
+            let genesisProtocol = new web3.eth.Contract(GenesisProtocol, proposal.votingMachine);
+            await stake(proposal.id, stakingList[proposal.id], genesisProtocol)
+          }
+      }
+  } catch (e) {
+      console.log(e)
+  }
+}
 
 async function listenProposalsStateChanges(genesisProtocol) {
   let scanFromBlock = (await web3.eth.getBlockNumber()) - 518400; // 3 months
@@ -542,14 +615,23 @@ async function startBot() {
   }
   setTimeout(restart, 1000 * 60 * 60 * 6);
 
-  // const SUBGRAPH_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  // subgraphMonitorTimerId = setInterval(
-  //   verifySubgraphs,
-  //   SUBGRAPH_TIMER_INTERVAL
-  // );
+  const SUBGRAPH_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  subgraphMonitorTimerId = setInterval(
+    verifySubgraphs,
+    SUBGRAPH_TIMER_INTERVAL
+  );
+
+  const STAKING_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
+  let stakingBotTimerId = setInterval(
+    runStaking,
+    STAKING_TIMER_INTERVAL
+  );
 }
 
 if (require.main === module) {
+  module.exports = {
+    stake
+  };
   startBot().catch(err => {
     console.log(err);
   });
