@@ -82,6 +82,12 @@ async function runStaking() {
       stakesFor
       stakesAgainst
       votingMachine
+      joinAndQuit{
+        funding
+      }
+      fundingRequest {
+        amount
+      }
       dao {
         id
         nativeReputation {
