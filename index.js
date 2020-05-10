@@ -88,19 +88,26 @@ async function runStaking() {
           totalSupply
         }
       }
+      scheme {
+        numberOfBoostedProposals
+        numberOfPreBoostedProposals
+      }
+      gpQueue {
+        threshold
+      }
     }
   }`
 
   try {
-      let { data } = (await axios.post("https://api.thegraph.com/subgraphs/name/daostack/v7_5_exp_rinkeby", { query })).data
+      let { data } = (await axios.post("https://api.thegraph.com/subgraphs/name/daostack/v39_4_rinkeby", { query })).data
       let { proposals } = data
-      let stakingList = getStakingInstructions(proposals, web3.eth.defaultAccount)
       for (let proposal of proposals) {
-          if (stakingList[proposal.id] !== 0) {
+          let stakeAmount = getStakingInstructions(proposal, web3.eth.defaultAccount)
+          if (stakeAmount !== 0) {
             let version = require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0];
             const GenesisProtocol = require('@daostack/migration-experimental/contracts/' + version + '/GenesisProtocol.json').abi;
             let genesisProtocol = new web3.eth.Contract(GenesisProtocol, proposal.votingMachine);
-            await stake(proposal.id, stakingList[proposal.id], genesisProtocol)
+            await stake(proposal.id, stakeAmount, genesisProtocol)
           }
       }
   } catch (e) {
