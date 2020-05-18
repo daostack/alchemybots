@@ -24,7 +24,7 @@ function getStakeSize(proposal) {
         .mul(stakesAgainst)
         .div(new BN(PRECISION))
         .sub(stakesFor)
-    return min(stake, stakeSizeSanityCheck);
+    return Math.min(stake, stakeSizeSanityCheck);
 }
 
 function toStake(proposal, botAccount, maxNumberOfProposalsToBoost) {
@@ -46,15 +46,14 @@ function toStake(proposal, botAccount, maxNumberOfProposalsToBoost) {
 function stakingLogic(proposal, minVotesVolume, minVotesConfidence) {
     let stake = 0
     // funding requests logic
-    let votesConfidence = propsal.votesFor / proposal.votesAgainst
-    let votesVolume = (proposal.votesFor + proposal.votesAgainst) / proposal.dao.nativeReputation.totalSupply
+    const votesConfidence = proposal.votesFor / proposal.votesAgainst
+    const votesVolume = (proposal.votesFor + proposal.votesAgainst) / proposal.dao.nativeReputation.totalSupply
     if (votesConfidence > minVotesConfidence && votesVolume > minVotesVolume){ 
         stake = getStakeSize(proposal);
     }
     // reputation requests logic
-    else if (proposal.joinAndQuit.funding > 0) { // boost all proposals which send funds to the DAO
-        let fundingAmount = proposal.fundingAmount.amount
-        if (fundingAmount == 0 || fundingAmount == null){ // only boost rep requests which don't ask for funding 
+    else if (proposal.joinAndQuit != null){// boost all proposals which send funds to the DAO
+        if (proposal.fundingRequest == null){ // only boost rep requests which don't ask for funding 
             stake = getStakeSize(proposal)
         }
     }
