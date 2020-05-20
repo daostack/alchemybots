@@ -145,10 +145,10 @@ async function updateAlchemySettings() {
     try {
       let { data } = (await axios.post("https://api.thegraph.com/index-node/graphql", { query })).data
       if (data.indexingStatusForCurrentVersion !== []) {
-        let id = data.indexingStatusForCurrentVersion[0].subgraph
-        let failed = data.indexingStatusForCurrentVersion[0].fatalError === null
-        let synced = data.indexingStatusForCurrentVersion[0].synced
-        let latestEthereumBlockNumber = data.indexingStatusForCurrentVersion[0].chains[0].latestBlock.number
+        let id = data.indexingStatusForCurrentVersion.subgraph
+        let failed = data.indexingStatusForCurrentVersion.fatalError !== null
+        let synced = data.indexingStatusForCurrentVersion.synced
+        let latestEthereumBlockNumber = data.indexingStatusForCurrentVersion.chains[0].latestBlock.number
         return { id, failed, synced, latestEthereumBlockNumber }
       }
     } catch (e) {
