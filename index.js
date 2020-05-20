@@ -36,7 +36,7 @@ let subgraphMonitorTimerId;
 ////////////// Functions //////////////
 
 async function listenProposalsStateChanges(genesisProtocol) {
-  let scanFromBlock = (await web3.eth.getBlockNumber()) - 518400; // 3 months
+  let scanFromBlock = (await web3.eth.getBlockNumber()) - 1036800; // 6 months
 
   // Start listening to events
   genesisProtocol.events
