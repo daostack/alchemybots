@@ -146,7 +146,7 @@ async function updateAlchemySettings() {
       let { data } = (await axios.post("https://api.thegraph.com/index-node/graphql", { query })).data
       if (data.indexingStatusForCurrentVersion !== []) {
         let id = data.indexingStatusForCurrentVersion.subgraph
-        let failed = data.indexingStatusForCurrentVersion.fatalError !== null
+        let failed = data.indexingStatusForCurrentVersion.health !== "healthy"
         let synced = data.indexingStatusForCurrentVersion.synced
         let latestEthereumBlockNumber = data.indexingStatusForCurrentVersion.chains[0].latestBlock.number
         return { id, failed, synced, latestEthereumBlockNumber }
