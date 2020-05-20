@@ -121,17 +121,34 @@ async function updateAlchemySettings() {
   }
 
   async function monitorGraphNodeSubgraph() {
-    const query = `{
-      indexingStatusesForSubgraphName(subgraphName: "daostack/` + GRAPH_NODE_SUBGRAPH_URL.split('https://api.thegraph.com/subgraphs-daostack/name/daostack/')[1] + `") { subgraph synced failed chains { network ... on EthereumIndexingStatus { latestBlock { number hash } chainHeadBlock { number hash } } } }
+    const query = `
+    {
+      indexingStatusForCurrentVersion(subgraphName: "daostack/` + GRAPH_NODE_SUBGRAPH_URL.split('https://api.thegraph.com/subgraphs-daostack/name/daostack/')[1] + `") {
+        subgraph
+        synced
+        health
+        fatalError {
+          message
+          block { number hash }
+          handler
+        }
+        chains {
+          network
+          ... on EthereumIndexingStatus {
+            latestBlock { number hash }
+            chainHeadBlock { number hash }
+          }
+        }
+      }
     }`
 
     try {
       let { data } = (await axios.post("https://api.thegraph.com/index-node/graphql", { query })).data
-      if (data.indexingStatusesForSubgraphName !== []) {
-        let id = data.indexingStatusesForSubgraphName[0].subgraph
-        let failed = data.indexingStatusesForSubgraphName[0].failed
-        let synced = data.indexingStatusesForSubgraphName[0].synced
-        let latestEthereumBlockNumber = data.indexingStatusesForSubgraphName[0].chains[0].latestBlock.number
+      if (data.indexingStatusForCurrentVersion !== []) {
+        let id = data.indexingStatusForCurrentVersion[0].subgraph
+        let failed = data.indexingStatusForCurrentVersion[0].fatalError === null
+        let synced = data.indexingStatusForCurrentVersion[0].synced
+        let latestEthereumBlockNumber = data.indexingStatusForCurrentVersion[0].chains[0].latestBlock.number
         return { id, failed, synced, latestEthereumBlockNumber }
       }
     } catch (e) {
