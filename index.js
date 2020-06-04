@@ -4,7 +4,6 @@ let {
   convertMillisToTime,
   log
 } = require('./utils.js');
-let { verifySubgraphs } = require('./check-subgraph-status.js');
 let { getStakingInstructions } = require('./staking-bot.js');
 require('dotenv').config();
 
@@ -34,8 +33,7 @@ const retryLimit = 5;
 // List of all retries of proposals executions
 let retriedCount = {};
 
-// Subgraph Monitoring Bot timer ID
-let subgraphMonitorTimerId;
+let stakingBotTimerId;
 
 ////////////// Functions //////////////
 
@@ -628,14 +626,8 @@ async function startBot() {
   }
   setTimeout(restart, 1000 * 60 * 60 * 6);
 
-  const SUBGRAPH_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  subgraphMonitorTimerId = setInterval(
-    verifySubgraphs,
-    SUBGRAPH_TIMER_INTERVAL
-  );
-
   const STAKING_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  let stakingBotTimerId = setInterval(
+  stakingBotTimerId = setInterval(
     runStaking,
     STAKING_TIMER_INTERVAL
   );
