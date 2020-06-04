@@ -33,6 +33,8 @@ let retriedCount = {};
 // Subgraph Monitoring Bot timer ID
 let subgraphMonitorTimerId;
 
+let lastUnhandledRejectionErrorTime = 0;
+
 ////////////// Functions //////////////
 
 async function listenProposalsStateChanges(genesisProtocol) {
@@ -502,13 +504,16 @@ function restart() {
 
 async function startBot() {
   process.on('unhandledRejection', error => {
-    log('unhandledRejection: ' + error.message);
-    sendAlert(
-      'Alchemy bot encountered an unexpected error',
-      'unhandledRejection: ' +
-        error.message +
-        '\nPlease check the bot immediately'
-    );
+    if (lastUnhandledRejectionErrorTime < Date.now() - 1000 * 60 * 5) {
+      lastUnhandledRejectionErrorTime = Date.now();
+      log('unhandledRejection: ' + error.message);
+      sendAlert(
+        'Alchemy bot encountered an unexpected error',
+        'unhandledRejection: ' +
+          error.message +
+          '\nPlease check the bot immediately'
+      );
+    }
   });
 
   // Setup Genesis Protocol
