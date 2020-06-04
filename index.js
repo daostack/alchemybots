@@ -103,7 +103,7 @@ async function runStaking() {
   }`
 
   try {
-      let { data } = (await axios.post("https://api.thegraph.com/subgraphs/name/daostack/v39_4_rinkeby", { query })).data
+      let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
       let { proposals } = data
       for (let proposal of proposals) {
           let stakeAmount = getStakingInstructions(proposal, web3.eth.defaultAccount)
