@@ -3,8 +3,10 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const axios = require('axios')
-axios.defaults.timeout = 30000;
-  
+axios.defaults.timeout = 30000
+
+let { log } = require('./utils.js');
+
 function realMathToNumber(t) {
     const REAL_FBITS = 40
     const fraction = t.maskn(REAL_FBITS).toNumber() / Math.pow(2, REAL_FBITS)
@@ -12,6 +14,7 @@ function realMathToNumber(t) {
   }
 
 function getStakeSize(proposal) {
+    log('getStakeSize!')
     const stakeSizeSanityCheck = 1000 //TODO: what is a good value for this number?
     const threshold = realMathToNumber(new BN(proposal.gpQueue.threshold))
     const stakesFor = new BN(proposal.stakesFor)
@@ -29,6 +32,7 @@ function getStakeSize(proposal) {
 
 function toStake(proposal, botAccount, maxNumberOfProposalsToBoost) {
     // TODO: don't stake on a propsal if fundingRequest / dao.totalFunds > maxFundingRequest
+    log("Reached toStake on proposal: " + prposal)
     let returnValue = true
     // don't stake on the same proposal twice
     for (let { staker } of proposal.stakes) {
@@ -40,10 +44,14 @@ function toStake(proposal, botAccount, maxNumberOfProposalsToBoost) {
     if (proposal.numberOfPreBoostedProposals + proposal.numberOfBoostedProposals > maxNumberOfProposalsToBoost){
         returnValue = false
     }
+    log("toStake returnValue is: " + returnValue)
     return returnValue;
 }
 
 function stakingLogic(proposal, minVotesVolume, minVotesConfidence) {
+    log("Reached stakingLogic!")
+    log('proposal.joinAndQuit: ' + proposal.joinAndQuit)
+    log('proposal.fundingRequest: ' + proposal.fundingRequest)
     let stake = 0
     // funding requests logic
     const votesConfidence = proposal.votesFor / proposal.votesAgainst
@@ -69,6 +77,7 @@ function getStakingInstructions(proposal, botAccount) {
     if (toStake(proposal, botAccount, maxNumberOfProposalsToBoost)){
         stake = stakingLogic(proposal, minVotesVolume, minVotesConfidence)
     }
+    log('stake is: ' + stake)
     return stake;
 }
 
