@@ -101,7 +101,7 @@ async function runStaking() {
       }
     }
   }`
-
+  log("runStaking!")
   try {
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
       let { proposals } = data
