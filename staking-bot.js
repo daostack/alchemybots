@@ -32,7 +32,7 @@ function getStakeSize(proposal) {
 
 function toStake(proposal, botAccount, maxNumberOfProposalsToBoost) {
     // TODO: don't stake on a propsal if fundingRequest / dao.totalFunds > maxFundingRequest
-    log("Reached toStake on proposal: " + prposal)
+    log("Reached toStake on proposal: " + proposal)
     let returnValue = true
     // don't stake on the same proposal twice
     for (let { staker } of proposal.stakes) {
