@@ -119,6 +119,58 @@ async function runStaking() {
   }
 }
 
+async function runRedeemJoinAndQuit() {
+  const query = `{
+    proposals(where: {joinAndQuit_not: null, stage: "Executed"}) {
+      id
+      stage
+      joinAndQuit {
+        reputationMinted
+      }
+      scheme {
+        address
+        version
+      }
+    }
+  }`
+  let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
+  for (let proposal of data.proposals) {
+    if (proposal.joinAndQuit.reputationMinted !== "0") {
+      log(proposal.joinAndQuit.reputationMinted)
+      continue;
+    }
+    const JoinAndQuit = require('@daostack/migration-experimental/contracts/' + proposal.scheme.version + '/JoinAndQuit.json').abi;
+    let joinAndQuit = new web3.eth.Contract(JoinAndQuit, proposal.scheme.address);
+    joinAndQuit.methods
+    .redeemReputation(proposal.id)
+    .send(
+      {
+        from: web3.eth.defaultAccount,
+        gas: 300000,
+        gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+        nonce: ++nonce
+      },
+      async function(error) {
+        if (error) {
+          log(error);
+        } else {
+          log('Redeem transaction for proposal: ' + proposal.id + ' was sent.');
+        }
+      }
+    )
+    .on('confirmation', function(_, receipt) {
+      log(
+        'JoinAndQuit reputation redeem transaction: ' +
+          receipt.transactionHash +
+          ' for proposal: ' +
+          proposal.id +
+          ' was successfully confirmed.'
+      );
+    })
+    .on('error', console.error);
+    }
+}
+
 async function listenProposalsStateChanges(genesisProtocol) {
   let scanFromBlock = (await web3.eth.getBlockNumber()) - 518400; // 3 months
 
@@ -365,6 +417,49 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
           );
         })
         .on('error', console.error);
+
+        // Check if JoinAndQuit, if yes, call redeemReputation with the proposal ID
+        const query = `{
+          proposal(id: "${proposalId.toLowerCase()}") {
+            scheme {
+              name
+              address
+              version
+            }
+          }
+        }`
+        let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
+        if (data.proposal.scheme.name === "JoinAndQuit") {
+          const JoinAndQuit = require('@daostack/migration-experimental/contracts/' + data.proposal.scheme.version + '/JoinAndQuit.json').abi;
+          let joinAndQuit = new web3.eth.Contract(JoinAndQuit, data.proposal.scheme.address);
+          joinAndQuit.methods
+          .redeemReputation(proposalId)
+          .send(
+            {
+              from: web3.eth.defaultAccount,
+              gas: 300000,
+              gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+              nonce: ++nonce
+            },
+            async function(error) {
+              if (error) {
+                log(error);
+              } else {
+                log('Redeem transaction for proposal: ' + proposalId + ' was sent.');
+              }
+            }
+          )
+          .on('confirmation', function(_, receipt) {
+            log(
+              'JoinAndQuit reputation redeem transaction: ' +
+                receipt.transactionHash +
+                ' for proposal: ' +
+                proposalId +
+                ' was successfully confirmed.'
+            );
+          })
+          .on('error', console.error);
+          }
     } else {
       log(
         'Failed to execute proposal:' +
@@ -631,6 +726,8 @@ async function startBot() {
     runStaking,
     STAKING_TIMER_INTERVAL
   );
+
+  runRedeemJoinAndQuit();
 }
 
 if (require.main === module) {
