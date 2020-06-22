@@ -136,7 +136,6 @@ async function runRedeemJoinAndQuit() {
   let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
   for (let proposal of data.proposals) {
     if (proposal.joinAndQuit.reputationMinted !== "0") {
-      log(proposal.joinAndQuit.reputationMinted)
       continue;
     }
     const JoinAndQuit = require('@daostack/migration-experimental/contracts/' + proposal.scheme.version + '/JoinAndQuit.json').abi;
