@@ -45,7 +45,7 @@ async function stake(proposalId, stakeAmount, genesisProtocol) {
   .send(
     {
       from: web3.eth.defaultAccount,
-      gas: 300000,
+      gas: 1500000,
       gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
       nonce: ++nonce
     },
