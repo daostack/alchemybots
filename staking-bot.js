@@ -54,8 +54,13 @@ function stakingLogic(proposal, minVotesVolume, minVotesConfidence) {
     log('proposal.fundingRequest: ' + proposal.fundingRequest)
     let stake = 0
     // funding requests logic
+    log('votesFor: ' + proposal.votesFor)
+    log('votesAgainst: ' + proposal.votesAgainst)
+    log('total votes: ' + proposal.dao.nativeReputation.totalSupply)
     const votesConfidence = proposal.votesFor / proposal.votesAgainst
     const votesVolume = (proposal.votesFor + proposal.votesAgainst) / proposal.dao.nativeReputation.totalSupply
+    log('votesConfidence: ' + votesConfidence)
+    log('votesVolume: ' + votesVolume)
     if (votesConfidence > minVotesConfidence && votesVolume > minVotesVolume){ 
         stake = getStakeSize(proposal);
     }
