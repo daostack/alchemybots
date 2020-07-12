@@ -184,6 +184,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
       if (!error) {
         // Get the proposal and Genesis Protocol data
         let proposalId = events.returnValues._proposalId;
+        axios.get('https://us-central1-common-daostack.cloudfunctions.net/graphql/update-proposal-by-id?proposalId=' + proposalId + '&retries=4');
         let proposalState = events.returnValues._proposalState;
         let proposal = await genesisProtocol.methods
           .proposals(proposalId)
