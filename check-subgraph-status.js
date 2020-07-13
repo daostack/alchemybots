@@ -205,6 +205,11 @@ async function updateAlchemySettings() {
     verifySubgraphs: async function verifySubgraphs() {
       try {
         await updateAlchemySettings();
+      } catch (e) {
+        console.log(e)
+        sendSubgraphError('Error encounter while querying Github for Alchemy settings: ' + e, '')
+      }
+      try {
         checkStatus(true, await monitorGraphNodeSubgraph());
         checkStatus(false, await monitorSubgraph());
         verifyDataMatch();
