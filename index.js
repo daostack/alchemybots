@@ -184,7 +184,11 @@ async function listenProposalsStateChanges(genesisProtocol) {
       if (!error) {
         // Get the proposal and Genesis Protocol data
         let proposalId = events.returnValues._proposalId;
-        axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
+        try {
+          await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
+        } catch {
+          // just ignore for now
+        }
         let proposalState = events.returnValues._proposalState;
         let proposal = await genesisProtocol.methods
           .proposals(proposalId)
