@@ -389,8 +389,51 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       expirationCallBounty !== null &&
       Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0
     ) {
-      // Close the proposal as expired and claim the bounty
-      await genesisProtocol.methods
+      // Check if JoinAndQuit, if yes, call redeemReputation with the proposal ID
+      const query = `{
+        proposal(id: "${proposalId.toLowerCase()}") {
+          scheme {
+            name
+            address
+            version
+          }
+        }
+      }`
+      let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
+      if (data.proposal.scheme.name === "JoinAndQuit") {
+        const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.4/Redeemer.json').abi;
+        let migration = DAOstackMigration.migration(network);
+        let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.4'].Redeemer);
+        redeemer.methods
+        .redeemJoinAndQuit(data.proposal.scheme.address, genesisProtocol.address, proposalId, web3.eth.defaultAccount)
+        .send(
+          {
+            from: web3.eth.defaultAccount,
+            gas: 600000,
+            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+            nonce: ++nonce
+          },
+          async function(error) {
+            if (error) {
+              log(error);
+            } else {
+              log('Redeem transaction for proposal: ' + proposalId + ' was sent.');
+            }
+          }
+        )
+        .on('confirmation', function(_, receipt) {
+          log(
+            'JoinAndQuit reputation redeem transaction: ' +
+              receipt.transactionHash +
+              ' for proposal: ' +
+              proposalId +
+              ' was successfully confirmed.'
+          );
+        })
+        .on('error', console.error);
+      } else {
+        // Close the proposal as expired and claim the bounty
+        await genesisProtocol.methods
         .execute(proposalId)
         .send(
           {
@@ -421,49 +464,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
           );
         })
         .on('error', console.error);
-
-        // Check if JoinAndQuit, if yes, call redeemReputation with the proposal ID
-        const query = `{
-          proposal(id: "${proposalId.toLowerCase()}") {
-            scheme {
-              name
-              address
-              version
-            }
-          }
-        }`
-        let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
-        if (data.proposal.scheme.name === "JoinAndQuit") {
-          const JoinAndQuit = require('@daostack/migration-experimental/contracts/' + data.proposal.scheme.version + '/JoinAndQuit.json').abi;
-          let joinAndQuit = new web3.eth.Contract(JoinAndQuit, data.proposal.scheme.address);
-          joinAndQuit.methods
-          .redeemReputation(proposalId)
-          .send(
-            {
-              from: web3.eth.defaultAccount,
-              gas: 300000,
-              gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
-              nonce: ++nonce
-            },
-            async function(error) {
-              if (error) {
-                log(error);
-              } else {
-                log('Redeem transaction for proposal: ' + proposalId + ' was sent.');
-              }
-            }
-          )
-          .on('confirmation', function(_, receipt) {
-            log(
-              'JoinAndQuit reputation redeem transaction: ' +
-                receipt.transactionHash +
-                ' for proposal: ' +
-                proposalId +
-                ' was successfully confirmed.'
-            );
-          })
-          .on('error', console.error);
-          }
+      }
     } else {
       log(
         'Failed to execute proposal:' +
@@ -711,7 +712,7 @@ async function startBot() {
     }
     activeVMs.push(gpAddress);
     let genesisProtocol = new web3.eth.Contract(GenesisProtocol, gpAddress);
-    // Subscrice to StateChange events of the Genesis Protocol
+    // Subscribe to StateChange events of the Genesis Protocol
     log(
       'Started listening to StateChange events of Genesis Protocol: ' +
         gpAddress +
