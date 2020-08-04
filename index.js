@@ -172,7 +172,10 @@ async function runRedeemJoinAndQuit() {
 
 async function listenProposalsStateChanges(genesisProtocol) {
   let scanFromBlock = (await web3.eth.getBlockNumber()) - 518400; // 3 months
-
+  if (nonce === -1) {
+    nonce =
+      (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
+  }
   // Start listening to events
   genesisProtocol.events
     .StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
