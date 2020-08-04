@@ -272,6 +272,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
         }
       } else {
         log('Failed to start event listener');
+        console.log(error);
       }
     })
     .on('error', console.error);
@@ -308,7 +309,8 @@ async function listenProposalsStateChanges(genesisProtocol) {
           }
         }
       } else {
-        log('Failed to start event listener');
+        log('Failed to start event listener 3');
+        console.log(error);
       }
     })
     .on('error', console.error);
@@ -703,9 +705,9 @@ async function startBot() {
   let migration = DAOstackMigration.migration(network);
   let activeVMs = [];
   for (let version in migration.package) {
-    if (version !== require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0]) {
-      continue;
-    }
+    // if (version !== require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0]) {
+    //   continue;
+    // }
     const GenesisProtocol = require('@daostack/migration-experimental/contracts/' +
       version +
       '/GenesisProtocol.json').abi;
