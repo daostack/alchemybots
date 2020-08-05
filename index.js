@@ -55,7 +55,7 @@ async function stake(proposalId, stakeAmount, genesisProtocol) {
       }
     }
   )
-  .on('confirmation', function(_, receipt) {
+  .on('confirmation', async function(_, receipt) {
     log(
       'Staking transaction: ' +
         receipt.transactionHash +
@@ -63,6 +63,11 @@ async function stake(proposalId, stakeAmount, genesisProtocol) {
         proposalId +
         ' was successfully confirmed.'
     );
+    try {
+      await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+    } catch {
+      // just ignore for now
+    }
   })
   .on('error', console.error);
 }
@@ -157,7 +162,7 @@ async function runRedeemJoinAndQuit() {
         }
       }
     )
-    .on('confirmation', function(_, receipt) {
+    .on('confirmation', async function(_, receipt) {
       log(
         'JoinAndQuit reputation redeem transaction: ' +
           receipt.transactionHash +
@@ -165,6 +170,11 @@ async function runRedeemJoinAndQuit() {
           proposal.id +
           ' was successfully confirmed.'
       );
+      try {
+        await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+      } catch {
+        // just ignore for now
+      }
     })
     .on('error', console.error);
     }
@@ -353,7 +363,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
             }
           }
         )
-        .on('confirmation', function(_, receipt) {
+        .on('confirmation', async function(_, receipt) {
           log(
             'Boosting transaction: ' +
               receipt.transactionHash +
@@ -361,6 +371,11 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
               proposalId +
               ' was successfully confirmed.'
           );
+          try {
+            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          } catch {
+            // just ignore for now
+          }
         })
         .on('error', console.error);
     }
@@ -426,7 +441,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
             }
           }
         )
-        .on('confirmation', function(_, receipt) {
+        .on('confirmation', async function(_, receipt) {
           log(
             'JoinAndQuit reputation redeem transaction: ' +
               receipt.transactionHash +
@@ -434,6 +449,11 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
               proposalId +
               ' was successfully confirmed.'
           );
+          try {
+            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          } catch {
+            // just ignore for now
+          }
         })
         .on('error', console.error);
       } else {
@@ -459,7 +479,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
             }, 10000);
           }
         )
-        .on('confirmation', function(_, receipt) {
+        .on('confirmation', async function(_, receipt) {
           log(
             'Execution transaction: ' +
               receipt.transactionHash +
@@ -467,6 +487,11 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
               proposalId +
               ' was successfully confirmed.'
           );
+          try {
+            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          } catch {
+            // just ignore for now
+          }
         })
         .on('error', console.error);
       }
@@ -511,7 +536,7 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
           }
         }
       )
-      .on('confirmation', function(_, receipt) {
+      .on('confirmation', async function(_, receipt) {
         log(
           'Execution transaction: ' +
             receipt.transactionHash +
@@ -519,6 +544,11 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
             proposalId +
             ' was successfully confirmed.'
         );
+        try {
+          await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+        } catch {
+          // just ignore for now
+        }
       })
       .on('error', console.error);
   }, timerDelay);
