@@ -20,6 +20,14 @@ let account = web3.eth.accounts.privateKeyToAccount(privateKey);
 web3.eth.accounts.wallet.add(account);
 web3.eth.defaultAccount = account.address;
 
+async function getGasPrice(genesisProtocol, proposalId) {
+  let proposal = await genesisProtocol.methods.proposals(proposalId).call();
+  return web3.utils.toWei(
+    gasPrice ? (await genesisProtocol.methods.organizations(proposal.organizationId).call()).toLowerCase() === '0x519b70055af55a007110b4ff99b0ea33071c720a' : 300,
+    'gwei'
+  )
+}
+
 // List all active timers by proposalId
 let activeTimers = {};
 
