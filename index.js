@@ -196,7 +196,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
           {
             from: web3.eth.defaultAccount,
             gas: 300000,
-            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+            gasPrice: (await getGasPrice(genesisProtocol, proposalId)),
             nonce: ++nonce
           },
           function(error, transactionHash) {
@@ -266,7 +266,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
           {
             from: web3.eth.defaultAccount,
             gas: 300000,
-            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+            gasPrice: (await getGasPrice(genesisProtocol, proposalId)),
             nonce: ++nonce
           },
           async function(error) {
@@ -323,7 +323,7 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
         {
           from: web3.eth.defaultAccount,
           gas: 300000,
-          gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+          gasPrice: (await getGasPrice(genesisProtocol, proposalId)),
           nonce: ++nonce
         },
         async function(error) {
