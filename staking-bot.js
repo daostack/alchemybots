@@ -15,7 +15,7 @@ function realMathToNumber(t) {
 
 function getStakeSize(proposal) {
     log('getStakeSize!')
-    const stakeSizeSanityCheck = 100000000000 //TODO: what is a good value for this number?
+    const stakeSizeSanityCheck = 10000000000000000000 //TODO: what is a good value for this number?
     const threshold = realMathToNumber(new BN(proposal.gpQueue.threshold))
     const stakesFor = new BN(proposal.stakesFor)
     const stakesAgainst = new BN(proposal.stakesAgainst)
