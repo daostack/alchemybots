@@ -111,7 +111,7 @@ async function runStaking() {
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
       let { proposals } = data
       for (let proposal of proposals) {
-          let stakeAmount = web3.utils.toWei(getStakingInstructions(proposal, web3.eth.defaultAccount).toString())
+          let stakeAmount = web3.utils.toWei('10') // Comment out logic for now... web3.utils.toWei(getStakingInstructions(proposal, web3.eth.defaultAccount).toString())
           if (stakeAmount !== 0) {
             let version = require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0];
             const GenesisProtocol = require('@daostack/migration-experimental/contracts/' + version + '/GenesisProtocol.json').abi;
