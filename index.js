@@ -116,7 +116,7 @@ async function runStaking() {
             let version = require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0];
             const GenesisProtocol = require('@daostack/migration-experimental/contracts/' + version + '/GenesisProtocol.json').abi;
             let genesisProtocol = new web3.eth.Contract(GenesisProtocol, proposal.votingMachine);
-            await stake(proposal.id, stakeAmount, genesisProtocol)
+            stake(proposal.id, stakeAmount, genesisProtocol)
           }
       }
   } catch (e) {
