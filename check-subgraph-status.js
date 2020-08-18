@@ -123,7 +123,7 @@ async function updateAlchemySettings() {
   async function monitorGraphNodeSubgraph() {
     const query = `
     {
-      indexingStatusForCurrentVersion(subgraphName: "daostack/` + GRAPH_NODE_SUBGRAPH_URL.split('https://api.thegraph.com/subgraphs-daostack/name/daostack/')[1] + `") {
+      indexingStatusForCurrentVersion(subgraphName: "daostack/` + GRAPH_NODE_SUBGRAPH_URL.split('https://api.thegraph.com/subgraphs/name/daostack/')[1] + `") {
         subgraph
         synced
         health
