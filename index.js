@@ -25,6 +25,7 @@ let dxdaoAccount = web3.eth.accounts.privateKeyToAccount(dxdaoPrivateKey);
 web3.eth.accounts.wallet.add(account);
 web3.eth.accounts.wallet.add(dxdaoAccount);
 web3.eth.defaultAccount = account.address;
+let dxdaoAddress = dxdaoAccount.address;
 
 async function getTxParams(genesisProtocol, proposalId) {
   let proposal = await genesisProtocol.methods.proposals(proposalId).call();
@@ -35,7 +36,7 @@ async function getTxParams(genesisProtocol, proposalId) {
     'gwei'
   )
 
-  let txFrom = dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? dxdaoAccount : web3.eth.defaultAccount;
+  let txFrom = dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? dxdaoAddress : web3.eth.defaultAccount;
 
   let txNonce = (await web3.eth.getTransactionCount(txFrom)) - 1;
 
