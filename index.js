@@ -7,8 +7,12 @@ let {
 let { verifySubgraphs } = require('./check-subgraph-status.js');
 require('dotenv').config();
 
+const axios = require('axios')
+axios.defaults.timeout = 30000;
+
 let network = process.env.NETWORK;
 let privateKey = process.env.PRIVATE_KEY;
+let dxdaoPrivateKey = process.env.DX_DAO_PRIVATE_KEY;
 let web3WSProvider = process.env.WEB3_WS_PROVIDER;
 let gasPrice = process.env.GAS_PRICE;
 let nonce = -1;
@@ -17,15 +21,30 @@ let nonce = -1;
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.WebsocketProvider(web3WSProvider));
 let account = web3.eth.accounts.privateKeyToAccount(privateKey);
+let dxdaoAccount = web3.eth.accounts.privateKeyToAccount(dxdaoPrivateKey);
 web3.eth.accounts.wallet.add(account);
+web3.eth.accounts.wallet.add(dxdaoAccount);
 web3.eth.defaultAccount = account.address;
 
-async function getGasPrice(genesisProtocol, proposalId) {
+async function getTxParams(genesisProtocol, proposalId) {
   let proposal = await genesisProtocol.methods.proposals(proposalId).call();
-  return web3.utils.toWei(
-    ((await genesisProtocol.methods.organizations(proposal.organizationId).call()).toLowerCase() === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? gasPrice : '300').toString(),
+  let dao = (await genesisProtocol.methods.organizations(proposal.organizationId).call()).toLowerCase();
+  let ethGasStationPrices = (await axios.get('https://ethgasstation.info/api/ethgasAPI.json')).data
+  let txGasPrice =  web3.utils.toWei(
+    (dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? ethGasStationPrices.fastest / 10 : gasPrice).toString(),
     'gwei'
   )
+
+  let txFrom = dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? dxdaoAccount : web3.eth.defaultAccount;
+
+  let txNonce = (await web3.eth.getTransactionCount(txFrom)) - 1;
+
+  return {
+    from: txFrom,
+    gas: 300000,
+    gasPrice: txGasPrice,
+    nonce: txNonce
+  }
 }
 
 // List all active timers by proposalId
@@ -193,12 +212,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
       await genesisProtocol.methods
         .execute(proposalId)
         .send(
-          {
-            from: web3.eth.defaultAccount,
-            gas: 300000,
-            gasPrice: (await getGasPrice(genesisProtocol, proposalId)),
-            nonce: ++nonce
-          },
+          (await getTxParams(genesisProtocol, proposalId)),
           function(error, transactionHash) {
             if (!error) {
               log(
@@ -263,12 +277,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       await genesisProtocol.methods
         .execute(proposalId)
         .send(
-          {
-            from: web3.eth.defaultAccount,
-            gas: 300000,
-            gasPrice: (await getGasPrice(genesisProtocol, proposalId)),
-            nonce: ++nonce
-          },
+          (await getTxParams(genesisProtocol, proposalId)),
           async function(error) {
             if (error) {
               log(error);
@@ -320,12 +329,7 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
     await genesisProtocol.methods
       .execute(proposalId)
       .send(
-        {
-          from: web3.eth.defaultAccount,
-          gas: 300000,
-          gasPrice: (await getGasPrice(genesisProtocol, proposalId)),
-          nonce: ++nonce
-        },
+        (await getTxParams(genesisProtocol, proposalId)),
         async function(error) {
           if (error) {
             log(error);
