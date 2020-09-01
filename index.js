@@ -7,6 +7,9 @@ let {
 let { verifySubgraphs } = require('./check-subgraph-status.js');
 require('dotenv').config();
 
+const axios = require('axios')
+axios.defaults.timeout = 30000;
+
 let network = process.env.NETWORK;
 let privateKey = process.env.PRIVATE_KEY;
 let dxdaoPrivateKey = process.env.DX_DAO_PRIVATE_KEY;
@@ -26,8 +29,9 @@ web3.eth.defaultAccount = account.address;
 async function getTxParams(genesisProtocol, proposalId) {
   let proposal = await genesisProtocol.methods.proposals(proposalId).call();
   let dao = (await genesisProtocol.methods.organizations(proposal.organizationId).call()).toLowerCase();
+  let ethGasStationPrices = (await axios.get('https://ethgasstation.info/api/ethgasAPI.json')).data
   let txGasPrice =  web3.utils.toWei(
-    (dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? gasPrice : '300').toString(),
+    (dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? ethGasStationPrices.fastest / 10 : gasPrice).toString(),
     'gwei'
   )
 
