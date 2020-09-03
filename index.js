@@ -23,6 +23,8 @@ let account = web3.eth.accounts.privateKeyToAccount(privateKey);
 web3.eth.accounts.wallet.add(account);
 web3.eth.defaultAccount = account.address;
 
+const DAOstackMigration = require('@daostack/migration-experimental');
+
 // List all active timers by proposalId
 let activeTimers = {};
 
@@ -731,7 +733,6 @@ async function startBot() {
   });
 
   // Setup Genesis Protocol
-  const DAOstackMigration = require('@daostack/migration-experimental');
   let migration = DAOstackMigration.migration(network);
   let activeVMs = [];
   for (let version in migration.package) {
