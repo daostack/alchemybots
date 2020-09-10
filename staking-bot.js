@@ -50,7 +50,7 @@ function toStake(proposal, botAccount, maxNumberOfProposalsToBoost) {
 
 function stakingLogic(proposal, minVotesVolume, minVotesConfidence) {
     log("Reached stakingLogic!")
-    log('proposal.joinAndQuit: ' + proposal.joinAndQuit)
+    log('proposal.join: ' + proposal.join)
     log('proposal.fundingRequest: ' + proposal.fundingRequest)
     let stake = 0
     // funding requests logic
@@ -65,7 +65,7 @@ function stakingLogic(proposal, minVotesVolume, minVotesConfidence) {
         stake = getStakeSize(proposal);
     }
     // reputation requests logic
-    else if (proposal.joinAndQuit != null){// boost all proposals which send funds to the DAO
+    else if (proposal.join != null){// boost all proposals which send funds to the DAO
         if (proposal.fundingRequest == null){ // only boost rep requests which don't ask for funding 
             stake = getStakeSize(proposal)
         }

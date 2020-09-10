@@ -1,7 +1,6 @@
 function sendAlert(subject, text) {
     log('Alert: ' + subject + '\n' + text);
-
-    if (!process.env.NOTIFICATIONS) {
+    if (process.env.NOTIFICATIONS.toLowerCase() == 'false') {
       return;
     }
     let sender = process.env.SENDER;

@@ -87,7 +87,7 @@ async function runStaking() {
       stakesFor
       stakesAgainst
       votingMachine
-      joinAndQuit{
+      join {
         funding
       }
       fundingRequest {
@@ -126,12 +126,12 @@ async function runStaking() {
   }
 }
 
-async function runRedeemJoinAndQuit() {
+async function runRedeemJoin() {
   const query = `{
-    proposals(where: {joinAndQuit_not: null, stage: "Executed"}) {
+    proposals(where: {join_not: null, stage: "Executed"}) {
       id
       stage
-      joinAndQuit {
+      join {
         reputationMinted
       }
       scheme {
@@ -142,12 +142,15 @@ async function runRedeemJoinAndQuit() {
   }`
   let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
   for (let proposal of data.proposals) {
-    if (proposal.joinAndQuit.reputationMinted !== "0") {
+    if (proposal.join.reputationMinted !== "0") {
       continue;
     }
-    const JoinAndQuit = require('@daostack/migration-experimental/contracts/' + proposal.scheme.version + '/JoinAndQuit.json').abi;
-    let joinAndQuit = new web3.eth.Contract(JoinAndQuit, proposal.scheme.address);
-    joinAndQuit.methods
+    if (!require('@daostack/migration-experimental/contracts/' + proposal.scheme.version + '/Join.json')) {
+      return;
+    }
+    const Join = require('@daostack/migration-experimental/contracts/' + proposal.scheme.version + '/Join.json').abi;
+    let join = new web3.eth.Contract(Join, proposal.scheme.address);
+    join.methods
     .redeemReputation(proposal.id)
     .send(
       {
@@ -166,7 +169,7 @@ async function runRedeemJoinAndQuit() {
     )
     .on('confirmation', async function(_, receipt) {
       log(
-        'JoinAndQuit reputation redeem transaction: ' +
+        'Join reputation redeem transaction: ' +
           receipt.transactionHash +
           ' for proposal: ' +
           proposal.id +
@@ -411,7 +414,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       expirationCallBounty !== null &&
       Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0
     ) {
-      // Check if JoinAndQuit, if yes, call redeemReputation with the proposal ID
+      // Check if Join, if yes, call redeemReputation with the proposal ID
       const query = `{
         proposal(id: "${proposalId.toLowerCase()}") {
           scheme {
@@ -422,12 +425,12 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
         }
       }`
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
-      if (data.proposal.scheme.name === "JoinAndQuit") {
+      if (data.proposal.scheme.name === "Join") {
         const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.4/Redeemer.json').abi;
         let migration = DAOstackMigration.migration(network);
         let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.4'].Redeemer);
         redeemer.methods
-        .redeemJoinAndQuit(data.proposal.scheme.address, genesisProtocol.address, proposalId, web3.eth.defaultAccount)
+        .redeemJoin(data.proposal.scheme.address, genesisProtocol.address, proposalId, web3.eth.defaultAccount)
         .send(
           {
             from: web3.eth.defaultAccount,
@@ -445,7 +448,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
         )
         .on('confirmation', async function(_, receipt) {
           log(
-            'JoinAndQuit reputation redeem transaction: ' +
+            'Join reputation redeem transaction: ' +
               receipt.transactionHash +
               ' for proposal: ' +
               proposalId +
@@ -735,10 +738,15 @@ async function startBot() {
   // Setup Genesis Protocol
   let migration = DAOstackMigration.migration(network);
   let activeVMs = [];
+  let unsupportedVersions = ["0.1.2-rc.0", "0.1.2-rc.1", "0.1.2-rc.2", "0.1.2-rc.3", "0.1.2-rc.4"];
+  
   for (let version in migration.package) {
     // if (version !== require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0]) {
     //   continue;
     // }
+    if (unsupportedVersions.indexOf(version) !== -1) {
+      continue;
+    }
     const GenesisProtocol = require('@daostack/migration-experimental/contracts/' +
       version +
       '/GenesisProtocol.json').abi;
@@ -768,7 +776,7 @@ async function startBot() {
     STAKING_TIMER_INTERVAL
   );
 
-  runRedeemJoinAndQuit();
+  runRedeemJoin();
 }
 
 if (require.main === module) {
