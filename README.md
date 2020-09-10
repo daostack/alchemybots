@@ -6,9 +6,10 @@ A simple script to execute expired Genesis Protocol proposals.
 ```
 NETWORK = "YOUR_ETHEREUM_NETWORK_NAME"
 PRIVATE_KEY = "YOUR_PRIVATE_KEY"
-SCAN_FROM_BLOCK = BLOCK_NUMBER_TO_LISTEN_FROM
 WEB3_WS_PROVIDER = "ETHEREUM_WEB_SOCKET_URL"
 GAS_PRICE = YOUR_DESIRED_GAS_PRICE
+COMMON_URL = "SUBGRAPH_URL_COMMON_IS_USING"
+COMMON_UPDATING_URL="https://us-central1-common-daostack.cloudfunctions.net/graphql/update-proposal-by-id"
 ```
 2. Open a termminal window within the bot directory and type out the following:
 ```
