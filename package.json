@@ -22,7 +22,7 @@
     "migrate": "npm explore @daostack/migration-experimental -- npm run migrate",
     "cleandb": "npm explore @daostack/migration-experimental -- npm run cleandb",
     "jest": "jest --runInBand --forceExit",
-    "start": "rm out.log && rm error.log && forever start ./forever-conf.json",
+    "start": "touch out.log error.log && rm out.log && rm error.log && forever start ./forever-conf.json",
     "stop": "forever stop alchemy-bot",
     "logs": "tail -f out.log"
   },
