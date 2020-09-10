@@ -38,7 +38,7 @@ async function getTxParams(genesisProtocol, proposalId) {
 
   let txFrom = dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? dxdaoAddress : web3.eth.defaultAccount;
 
-  let txNonce = (await web3.eth.getTransactionCount(txFrom)) - 1;
+  let txNonce = (await web3.eth.getTransactionCount(txFrom, 'pending'));
 
   return {
     from: txFrom,
