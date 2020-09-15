@@ -42,6 +42,7 @@ let stakingBotTimerId;
 // Staking
 
 async function stake(proposalId, stakeAmount, genesisProtocol) {
+  await checkIfLowGas();
   await genesisProtocol.methods
   .stake(proposalId, 1, stakeAmount)
   .send(
@@ -153,6 +154,7 @@ async function runRedeemJoin() {
     }
   }`
   let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
+  await checkIfLowGas();
   for (let proposal of data.proposals) {
     if (proposal.join.reputationMinted !== "0") {
       continue;
@@ -442,6 +444,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       }`
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
       if (data.proposal.scheme.name === "Join" && process.env.COMMON.toLowerCase() != 'false') {
+        await checkIfLowGas();
         const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.4/Redeemer.json').abi;
         let migration = DAOstackMigration.migration(network);
         let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.4'].Redeemer);
@@ -791,6 +794,7 @@ async function startBot() {
     await listenProposalBountyRedeemed(genesisProtocol);
   }
   setTimeout(restart, 1000 * 60 * 60 * 6);
+  await checkIfLowGas();
   if (process.env.COMMON.toLowerCase() == 'false') {
     return;
   }
