@@ -112,6 +112,9 @@ async function runStaking() {
       gpQueue {
         threshold
       }
+      genesisProtocolParams {
+        minimumDaoBounty
+      }
     }
   }`
   log("runStaking!")
@@ -119,7 +122,7 @@ async function runStaking() {
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
       let { proposals } = data
       for (let proposal of proposals) {
-        if (proposal.join == null && proposal.fundingRequest == null) {
+        if ((proposal.join == null && proposal.fundingRequest == null) && proposal.genesisProtocolParams.minimumDaoBounty.toString() == '1') {
           return;
         }
         let stakeAmount = 10; //web3.utils.toWei('10') // Comment out logic for now... web3.utils.toWei(getStakingInstructions(proposal, web3.eth.defaultAccount).toString())
