@@ -10,6 +10,7 @@ WEB3_WS_PROVIDER = "ETHEREUM_WEB_SOCKET_URL"
 GAS_PRICE = YOUR_DESIRED_GAS_PRICE
 COMMON_URL = "SUBGRAPH_URL_COMMON_IS_USING"
 COMMON_UPDATING_URL="https://us-central1-common-daostack.cloudfunctions.net/graphql/update-proposal-by-id"
+COMMON=false/true #(activate Common functionality)
 NOTIFICATIONS=false/true #(send error notifications)
 SENDER=BOT_EMAIL_ACCOUNT
 RECEIVER=EMAIL_RECEIVERS_ACCOUNTS # e.g. alice@gmail.com,bob@gmail.com

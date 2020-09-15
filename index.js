@@ -79,6 +79,12 @@ async function runStaking() {
   const query = `{
   proposals(where: {stage: "Queued"}, orderBy: createdAt, first: 1000) {
       id
+      join {
+        id
+      }
+      fundingRequest {
+        id
+      }
       stakes {
         staker
       }
@@ -113,13 +119,16 @@ async function runStaking() {
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
       let { proposals } = data
       for (let proposal of proposals) {
-          let stakeAmount = web3.utils.toWei('10') // Comment out logic for now... web3.utils.toWei(getStakingInstructions(proposal, web3.eth.defaultAccount).toString())
-          if (stakeAmount !== 0) {
-            let version = require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0];
-            const GenesisProtocol = require('@daostack/migration-experimental/contracts/' + version + '/GenesisProtocol.json').abi;
-            let genesisProtocol = new web3.eth.Contract(GenesisProtocol, proposal.votingMachine);
-            stake(proposal.id, stakeAmount, genesisProtocol)
-          }
+        if (proposal.join == null && proposal.fundingRequest == null) {
+          return;
+        }
+        let stakeAmount = 10; //web3.utils.toWei('10') // Comment out logic for now... web3.utils.toWei(getStakingInstructions(proposal, web3.eth.defaultAccount).toString())
+        if (stakeAmount !== 0) {
+          let version = require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0];
+          const GenesisProtocol = require('@daostack/migration-experimental/contracts/' + version + '/GenesisProtocol.json').abi;
+          let genesisProtocol = new web3.eth.Contract(GenesisProtocol, proposal.votingMachine);
+          stake(proposal.id, stakeAmount, genesisProtocol)
+        }
       }
   } catch (e) {
       console.log(e)
@@ -202,10 +211,12 @@ async function listenProposalsStateChanges(genesisProtocol) {
       if (!error) {
         // Get the proposal and Genesis Protocol data
         let proposalId = events.returnValues._proposalId;
-        try {
-          await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
-        } catch {
-          sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
+        if (process.env.COMMON.toLowerCase() != 'false') {
+          try {
+            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
+          } catch {
+            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
+          }
         }
         let proposalState = events.returnValues._proposalState;
         let proposal = await genesisProtocol.methods
@@ -376,10 +387,12 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
               proposalId +
               ' was successfully confirmed.'
           );
-          try {
-            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-          } catch {
-            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          if (process.env.COMMON.toLowerCase() != 'false') {
+            try {
+              await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            } catch {
+              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            }
           }
         })
         .on('error', console.error);
@@ -425,7 +438,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
         }
       }`
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
-      if (data.proposal.scheme.name === "Join") {
+      if (data.proposal.scheme.name === "Join" && process.env.COMMON.toLowerCase() != 'false') {
         const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.4/Redeemer.json').abi;
         let migration = DAOstackMigration.migration(network);
         let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.4'].Redeemer);
@@ -454,10 +467,12 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
               proposalId +
               ' was successfully confirmed.'
           );
-          try {
-            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-          } catch {
-            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          if (process.env.COMMON.toLowerCase() != 'false') {
+            try {
+              await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            } catch {
+              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            }
           }
         })
         .on('error', console.error);
@@ -492,10 +507,12 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
               proposalId +
               ' was successfully confirmed.'
           );
-          try {
-            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-          } catch {
-            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          if (process.env.COMMON.toLowerCase() != 'false') {
+            try {
+              await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            } catch {
+              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            }
           }
         })
         .on('error', console.error);
@@ -549,10 +566,12 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
             proposalId +
             ' was successfully confirmed.'
         );
-        try {
-          await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-        } catch {
-          sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+        if (process.env.COMMON.toLowerCase() != 'false') {
+          try {
+            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          } catch {
+            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          }
         }
       })
       .on('error', console.error);
@@ -769,7 +788,9 @@ async function startBot() {
     await listenProposalBountyRedeemed(genesisProtocol);
   }
   setTimeout(restart, 1000 * 60 * 60 * 6);
-
+  if (process.env.COMMON.toLowerCase() == 'false') {
+    return;
+  }
   const STAKING_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
   stakingBotTimerId = setInterval(
     runStaking,
