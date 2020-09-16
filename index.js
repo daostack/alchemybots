@@ -147,6 +147,7 @@ async function runRedeemJoin() {
       join {
         reputationMinted
       }
+      winningOutcome
       scheme {
         address
         version
@@ -156,7 +157,7 @@ async function runRedeemJoin() {
   let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
   await checkIfLowGas();
   for (let proposal of data.proposals) {
-    if (proposal.join.reputationMinted !== "0") {
+    if (proposal.join.reputationMinted !== "0" || proposal.winningOutcome == 'Fail') {
       continue;
     }
     if (!require('@daostack/migration-experimental/contracts/' + proposal.scheme.version + '/Join.json')) {
@@ -735,10 +736,10 @@ async function checkIfLowGas() {
   let botEthBalance = await web3.eth.getBalance(web3.eth.defaultAccount);
   if (botEthBalance < 100000000000000000) {
     // 0.1 ETH
-    let subject = 'Alchemy execution bot needs more ETH';
+    let subject = 'Alchemy execution bot needs more ETH on ' + network;
     let text =
       'The Alchemy execution bot has low ETH balance, soon transactions will stop being broadcasted, please add add ETH to fix this.\nBot address: ' +
-      web3.eth.defaultAccount;
+      web3.eth.defaultAccount + ' current balance: ' + web3.utils.fromWei(botEthBalance) + ' ETH';
 
     sendAlert(subject, text);
   }
