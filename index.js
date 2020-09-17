@@ -45,6 +45,9 @@ async function getGasPrice() {
     return gasPrice;
   }
   let ethGasStationPrices = (await axios.get('https://ethgasstation.info/api/ethgasAPI.json')).data;
+  if (ethGasStationPrices.fastest / 10 > 200) {
+    return '200';
+  }
   return (ethGasStationPrices.fastest / 10).toString();
 }
 
