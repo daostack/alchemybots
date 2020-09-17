@@ -448,6 +448,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       // Check if Join, if yes, call redeemReputation with the proposal ID
       const query = `{
         proposal(id: "${proposalId.toLowerCase()}") {
+          winningOutcome
           scheme {
             name
             address
@@ -456,7 +457,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
         }
       }`
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
-      if (data.proposal.scheme.name === "Join" && process.env.COMMON.toLowerCase() != 'false') {
+      if ((data.proposal.scheme.name === "Join" && process.env.COMMON.toLowerCase() != 'false') && proposal.winningOutcome != 'Fail') {
         await checkIfLowGas();
         const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.6/Redeemer.json').abi;
         let migration = DAOstackMigration.migration(network);
