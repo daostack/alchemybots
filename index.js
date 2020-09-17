@@ -39,6 +39,15 @@ let stakingBotTimerId;
 
 ////////////// Functions //////////////
 
+// Get gas price to use
+async function getGasPrice() {
+  if (network != 'mainnet') {
+    return gasPrice;
+  }
+  let ethGasStationPrices = (await axios.get('https://ethgasstation.info/api/ethgasAPI.json')).data;
+  return (ethGasStationPrices.fastest / 10).toString();
+}
+
 // Staking
 
 async function stake(proposalId, stakeAmount, genesisProtocol) {
@@ -49,7 +58,7 @@ async function stake(proposalId, stakeAmount, genesisProtocol) {
     {
       from: web3.eth.defaultAccount,
       gas: 1500000,
-      gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+      gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
       nonce: ++nonce
     },
     async function(error) {
@@ -171,7 +180,7 @@ async function runRedeemJoin() {
       {
         from: web3.eth.defaultAccount,
         gas: 300000,
-        gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+        gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
         nonce: ++nonce
       },
       async function(error) {
@@ -363,7 +372,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
           {
             from: web3.eth.defaultAccount,
             gas: 300000,
-            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+            gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
             nonce: ++nonce
           },
           function(error, transactionHash) {
@@ -455,7 +464,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
           {
             from: web3.eth.defaultAccount,
             gas: 600000,
-            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+            gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
             nonce: ++nonce
           },
           async function(error) {
@@ -491,7 +500,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
           {
             from: web3.eth.defaultAccount,
             gas: 300000,
-            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+            gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
             nonce: ++nonce
           },
           async function(error) {
@@ -556,7 +565,7 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
         {
           from: web3.eth.defaultAccount,
           gas: 300000,
-          gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+          gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
           nonce: ++nonce
         },
         async function(error) {
