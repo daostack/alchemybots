@@ -313,6 +313,10 @@ async function listenProposalsStateChanges(genesisProtocol) {
             // Setup timer for the expiration time
             await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
           }
+        } else if (proposalState === 2 && proposal.state === 2) {
+          if (process.env.COMMON.toLowerCase() != 'false') {
+            runRedeemJoin();
+          }
         }
       } else {
         log('Failed to start event listener');
