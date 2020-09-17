@@ -446,9 +446,9 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
       if (data.proposal.scheme.name === "Join" && process.env.COMMON.toLowerCase() != 'false') {
         await checkIfLowGas();
-        const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.4/Redeemer.json').abi;
+        const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.6/Redeemer.json').abi;
         let migration = DAOstackMigration.migration(network);
-        let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.4'].Redeemer);
+        let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.6'].Redeemer);
         redeemer.methods
         .redeemJoin(data.proposal.scheme.address, genesisProtocol.address, proposalId, web3.eth.defaultAccount)
         .send(
