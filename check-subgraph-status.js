@@ -57,10 +57,9 @@ async function updateAlchemySettings() {
   let alchemySettings = require('./alchemy-settings.json');
   // Commnets are due t temporary workaround
   if (alchemySettings.http_main !== GRAPH_NODE_SUBGRAPH_URL && GRAPH_NODE_SUBGRAPH_URL !== '') {
-    // sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.http_main)
+    sendAlchemySwitchedSubgraph(GRAPH_NODE_SUBGRAPH_URL, alchemySettings.http_main)
   }
-  // GRAPH_NODE_SUBGRAPH_URL = alchemySettings.http_main;
-  GRAPH_NODE_SUBGRAPH_URL = 'https://api.thegraph.com/subgraphs/name/daostack/v39_4';
+  GRAPH_NODE_SUBGRAPH_URL = alchemySettings.http_main;
   
   console.log('Alchemy production subgraph URL: ' + GRAPH_NODE_SUBGRAPH_URL);
 }
