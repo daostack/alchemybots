@@ -446,8 +446,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       });
     if (
       !failed &&
-      expirationCallBounty !== null &&
-      Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0
+      expirationCallBounty !== null
     ) {
       // Check if Join, if yes, call redeemReputation with the proposal ID
       const query = `{
