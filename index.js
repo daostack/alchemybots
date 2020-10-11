@@ -80,8 +80,14 @@ async function stake(proposalId, stakeAmount, genesisProtocol) {
     );
     try {
       await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-    } catch {
-      sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+    } catch (error) {
+      const { response } = error;
+      let errStr = '';
+      if (response) {
+        const { request, ...errorObject } = response;
+        errStr = JSON.stringify(errorObject);
+      }
+      sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
     }
   })
   .on('error', console.error);
@@ -204,8 +210,14 @@ async function runRedeemJoin() {
       );
       try {
         await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-      } catch {
-        sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+      } catch (error) {
+        const { response } = error;
+        let errStr = '';
+        if (response) {
+          const { request, ...errorObject } = response;
+          errStr = JSON.stringify(errorObject);
+        }
+        sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
       }
     })
     .on('error', console.error);
@@ -232,8 +244,14 @@ async function listenProposalsStateChanges(genesisProtocol) {
         if (process.env.COMMON.toLowerCase() != 'false') {
           try {
             await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
-          } catch {
-            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
+          } catch (error) {
+            const { response } = error;
+            let errStr = '';
+            if (response) {
+              const { request, ...errorObject } = response;
+              errStr = JSON.stringify(errorObject);
+            }
+            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
           }
         }
         let proposalState = events.returnValues._proposalState;
@@ -412,8 +430,14 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
           if (process.env.COMMON.toLowerCase() != 'false') {
             try {
               await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-            } catch {
-              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            } catch (error) {
+              const { response } = error;
+              let errStr = '';
+              if (response) {
+                const { request, ...errorObject } = response;
+                errStr = JSON.stringify(errorObject);
+              }
+              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
             }
           }
         })
@@ -493,8 +517,14 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
           if (process.env.COMMON.toLowerCase() != 'false') {
             try {
               await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-            } catch {
-              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            } catch (error) {
+              const { response } = error;
+              let errStr = '';
+              if (response) {
+                const { request, ...errorObject } = response;
+                errStr = JSON.stringify(errorObject);
+              }
+              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
             }
           }
         })
@@ -533,8 +563,14 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
           if (process.env.COMMON.toLowerCase() != 'false') {
             try {
               await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-            } catch {
-              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+            } catch (error) {
+              const { response } = error;
+              let errStr = '';
+              if (response) {
+                const { request, ...errorObject } = response;
+                errStr = JSON.stringify(errorObject);
+              }
+              sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
             }
           }
         })
@@ -592,8 +628,14 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
         if (process.env.COMMON.toLowerCase() != 'false') {
           try {
             await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-          } catch {
-            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
+          } catch (error) {
+            const { response } = error;
+            let errStr = '';
+            if (response) {
+              const { request, ...errorObject } = response;
+              errStr = JSON.stringify(errorObject);
+            }
+            sendAlert('Failed to update Common', 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
           }
         }
       })
