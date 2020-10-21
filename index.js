@@ -15,6 +15,7 @@ let privateKey = process.env.PRIVATE_KEY;
 let dxdaoPrivateKey = process.env.DX_DAO_PRIVATE_KEY;
 let web3WSProvider = process.env.WEB3_WS_PROVIDER;
 let gasPrice = process.env.GAS_PRICE;
+let GRAPH_NODE_SUBGRAPH_URL = process.env.GRAPH_NODE_SUBGRAPH_URL;
 let nonce = -1;
 
 // Setting up Web3 instance
@@ -28,6 +29,24 @@ web3.eth.defaultAccount = account.address;
 let dxdaoAddress = dxdaoAccount.address;
 
 async function getTxParams(tx, genesisProtocol, proposalId) {
+  const query = `{
+    proposal(id: "${proposalId.toLowerCase()}") {
+      id
+    }
+  }`
+
+  let { data } = (await axios.post(GRAPH_NODE_SUBGRAPH_URL, { query })).data
+
+  try {
+    if (data.proposal.id.toLowerCase() != proposalId.toLowerCase()) {
+      throw Error('Proposal was not found')
+    }
+  } catch {
+    return null
+  }
+  
+
+
   let proposal = await genesisProtocol.methods.proposals(proposalId).call();
   let dao = (await genesisProtocol.methods.organizations(proposal.organizationId).call()).toLowerCase();
 
@@ -172,7 +191,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
                 (timerDelay !== 0 ? convertMillisToTime(timerDelay) : 'now')
             );
             // Setup timer for the expiration time
-            // await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+            await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
           }
         }
       } else {
@@ -209,7 +228,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
                 (timerDelay !== 0 ? convertMillisToTime(timerDelay) : 'now')
             );
             // Setup timer for the expiration time
-            // await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+            await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
           }
         }
       } else {
@@ -229,8 +248,13 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
     if (proposal.state === 4) {
       // Boost the proposal or return it to Queue
     let executeTx = await genesisProtocol.methods.execute(proposalId)
+    let params = await getTxParams(executeTx, genesisProtocol, proposalId);
+    if (params == null) {
+      log('Skipping proposal: ' + proposalId + ' as it was not found on the subgraph')
+      return
+    }
     executeTx.send(
-          (await getTxParams(executeTx, genesisProtocol, proposalId)),
+          params,
           function(error, transactionHash) {
             if (!error) {
               log(
@@ -293,8 +317,13 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
     ) {
       // Close the proposal as expired and claim the bounty
       let executeTx = await genesisProtocol.methods.execute(proposalId)
+      let params = await getTxParams(executeTx, genesisProtocol, proposalId);
+      if (params == null) {
+        log('Skipping proposal: ' + proposalId + ' as it was not found on the subgraph')
+        return
+      }
       executeTx.send(
-          (await getTxParams(executeTx, genesisProtocol, proposalId)),
+        params,
           async function(error) {
             if (error) {
               log(error);
@@ -344,8 +373,13 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
 
     // Close the proposal as expired and claim the bounty
     let executeTx = await genesisProtocol.methods.execute(proposalId)
+    let params = await getTxParams(executeTx, genesisProtocol, proposalId);
+    if (params == null) {
+      log('Skipping proposal: ' + proposalId + ' as it was not found on the subgraph')
+      return
+    }
     executeTx.send(
-        (await getTxParams(executeTx, genesisProtocol, proposalId)),
+        params,
         async function(error) {
           if (error) {
             log(error);
