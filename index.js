@@ -72,6 +72,10 @@ async function getTxParams(tx, genesisProtocol, proposalId) {
       gas = blockLimit - 100000
     }
   } catch (error) {
+    if (error.toString().indexOf('always failing transaction') !== -1) {
+      log('Skipping transaction for proposal: ' + proposalId + ' reason: ' + error)
+      return null
+    }
     gas = blockLimit - 100000
     if (gas < 9000000) {
       gas = 9000000;
