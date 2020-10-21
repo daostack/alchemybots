@@ -34,7 +34,7 @@ async function getTxParams(tx, genesisProtocol, proposalId) {
 
   let ethGasStationPrices = (await axios.get('https://ethgasstation.info/api/ethgasAPI.json')).data
   let txGasPrice =  web3.utils.toWei(
-    (dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? ethGasStationPrices.fastest / 10 : gasPrice).toString(),
+    (dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? ((ethGasStationPrices.fastest / 10) + 30) : gasPrice).toString(),
     'gwei'
   )
 
