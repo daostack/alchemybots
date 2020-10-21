@@ -172,7 +172,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
                 (timerDelay !== 0 ? convertMillisToTime(timerDelay) : 'now')
             );
             // Setup timer for the expiration time
-            await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+            // await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
           }
         }
       } else {
@@ -209,7 +209,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
                 (timerDelay !== 0 ? convertMillisToTime(timerDelay) : 'now')
             );
             // Setup timer for the expiration time
-            await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
+            // await setExpirationTimer(genesisProtocol, proposalId, timerDelay);
           }
         }
       } else {
