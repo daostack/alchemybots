@@ -27,9 +27,11 @@ web3.eth.accounts.wallet.add(dxdaoAccount);
 web3.eth.defaultAccount = account.address;
 let dxdaoAddress = dxdaoAccount.address;
 
-async function getTxParams(genesisProtocol, proposalId) {
+async function getTxParams(tx, genesisProtocol, proposalId) {
   let proposal = await genesisProtocol.methods.proposals(proposalId).call();
   let dao = (await genesisProtocol.methods.organizations(proposal.organizationId).call()).toLowerCase();
+
+
   let ethGasStationPrices = (await axios.get('https://ethgasstation.info/api/ethgasAPI.json')).data
   let txGasPrice =  web3.utils.toWei(
     (dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? ethGasStationPrices.fastest / 10 : gasPrice).toString(),
@@ -40,9 +42,25 @@ async function getTxParams(genesisProtocol, proposalId) {
 
   let txNonce = (await web3.eth.getTransactionCount(txFrom, 'pending'));
 
+  let gas = 0;
+  const blockLimit = (await web3.eth.getBlock('latest')).gasLimit
+  try {
+    gas = (await tx.estimateGas())
+    if (gas * 1.5 < blockLimit - 100000) {
+      gas *= 1.5
+      gas = parseInt(gas)
+    } else {
+      gas = blockLimit - 100000
+    }
+  } catch (error) {
+    gas = blockLimit - 100000
+    if (gas < 9000000) {
+      gas = 9000000;
+    }
+  }
   return {
     from: txFrom,
-    gas: 300000,
+    gas,
     gasPrice: txGasPrice,
     nonce: txNonce
   }
@@ -210,10 +228,9 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
     let proposal = await genesisProtocol.methods.proposals(proposalId).call();
     if (proposal.state === 4) {
       // Boost the proposal or return it to Queue
-      await genesisProtocol.methods
-        .execute(proposalId)
-        .send(
-          (await getTxParams(genesisProtocol, proposalId)),
+    let executeTx = await genesisProtocol.methods.execute(proposalId)
+    executeTx.send(
+          (await getTxParams(executeTx, genesisProtocol, proposalId)),
           function(error, transactionHash) {
             if (!error) {
               log(
@@ -275,10 +292,9 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0
     ) {
       // Close the proposal as expired and claim the bounty
-      await genesisProtocol.methods
-        .execute(proposalId)
-        .send(
-          (await getTxParams(genesisProtocol, proposalId)),
+      let executeTx = await genesisProtocol.methods.execute(proposalId)
+      executeTx.send(
+          (await getTxParams(executeTx, genesisProtocol, proposalId)),
           async function(error) {
             if (error) {
               log(error);
@@ -327,10 +343,9 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
     // Check if can close the proposal as expired and claim the bounty
 
     // Close the proposal as expired and claim the bounty
-    await genesisProtocol.methods
-      .execute(proposalId)
-      .send(
-        (await getTxParams(genesisProtocol, proposalId)),
+    let executeTx = await genesisProtocol.methods.execute(proposalId)
+    executeTx.send(
+        (await getTxParams(executeTx, genesisProtocol, proposalId)),
         async function(error) {
           if (error) {
             log(error);
