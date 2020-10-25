@@ -138,7 +138,7 @@ async function runStaking() {
   }`
   log("runStaking!")
   try {
-      let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
+      let { data } = (await axios.post(process.env.SUBGRAPH_URL, { query })).data
       let { proposals } = data
       for (let proposal of proposals) {
         if ((proposal.join == null && proposal.fundingRequest == null) && proposal.genesisProtocolParams.minimumDaoBounty.toString() == '1') {
@@ -172,7 +172,7 @@ async function runRedeemJoin() {
       }
     }
   }`
-  let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
+  let { data } = (await axios.post(process.env.SUBGRAPH_URL, { query })).data
   await checkIfLowGas();
   for (let proposal of data.proposals) {
     if (proposal.join.reputationMinted !== "0" || proposal.winningOutcome == 'Fail') {
@@ -465,7 +465,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
         }
       }
     }`
-    let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
+    let { data } = (await axios.post(process.env.SUBGRAPH_URL, { query })).data
     // Check if the proposal scheme is registered to the dao
     if (!data.proposal.scheme.isRegistered) {
       log(
