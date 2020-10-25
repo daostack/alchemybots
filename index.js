@@ -453,7 +453,27 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
     log(
       'Proposal: ' + proposalId + ' has expired. Attempting to redeem proposal.'
     );
-
+    // Check if Join, if yes, call redeemReputation with the proposal ID
+    const query = `{
+      proposal(id: "${proposalId.toLowerCase()}") {
+        winningOutcome
+        scheme {
+          name
+          address
+          version
+          isRegistered
+        }
+      }
+    }`
+    let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
+    // Check if the proposal scheme is registered to the dao
+    if (!data.proposal.scheme.isRegistered) {
+      log(
+        'Could not call execute Proposal: ' +
+          proposalId +
+          '. Scheme is not registered in the DAO anymore'
+      );
+    }
     // Check if can close the proposal as expired and claim the bounty
     let failed = false;
     let expirationCallBounty = await genesisProtocol.methods
@@ -472,18 +492,6 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       !failed &&
       expirationCallBounty !== null
     ) {
-      // Check if Join, if yes, call redeemReputation with the proposal ID
-      const query = `{
-        proposal(id: "${proposalId.toLowerCase()}") {
-          winningOutcome
-          scheme {
-            name
-            address
-            version
-          }
-        }
-      }`
-      let { data } = (await axios.post(process.env.COMMON_URL, { query })).data
       if ((data.proposal.scheme.name === "Join" && process.env.COMMON.toLowerCase() != 'false') && data.proposal.winningOutcome != 'Fail') {
         await checkIfLowGas();
         const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.6/Redeemer.json').abi;
