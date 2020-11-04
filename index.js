@@ -2,9 +2,15 @@ let {
   sendAlert,
   extractJSON,
   convertMillisToTime,
-  log
+  log,
+  getNonce
 } = require('./utils.js');
-let { getStakingInstructions } = require('./staking-bot.js');
+
+const {
+  callCommonUpdater,
+  runRedeemJoin,
+  runStaking
+} = require('./common.js')
 require('dotenv').config();
 
 const axios = require('axios')
@@ -14,7 +20,6 @@ let network = process.env.NETWORK;
 let privateKey = process.env.PRIVATE_KEY;
 let web3WSProvider = process.env.WEB3_WS_PROVIDER;
 let gasPrice = process.env.GAS_PRICE;
-let nonce = -1;
 
 // Setting up Web3 instance
 const Web3 = require('web3');
@@ -37,6 +42,10 @@ let retriedCount = {};
 
 let stakingBotTimerId;
 
+const UNSUPPORTED_VERSIONS = [
+  "0.1.2-rc.0", "0.1.2-rc.1", "0.1.2-rc.2", "0.1.2-rc.3", "0.1.2-rc.4"
+];
+
 ////////////// Functions //////////////
 
 // Get gas price to use
@@ -51,209 +60,15 @@ async function getGasPrice() {
   return (ethGasStationPrices.fastest / 10).toString();
 }
 
-// Staking
-
-async function stake(proposalId, stakeAmount, genesisProtocol) {
-  await checkIfLowGas();
-  await genesisProtocol.methods
-  .stake(proposalId, 1, stakeAmount)
-  .send(
-    {
-      from: web3.eth.defaultAccount,
-      gas: 1500000,
-      gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
-      nonce: ++nonce
-    },
-    async function(error) {
-      if (error) {
-        log(error);
-      }
-    }
-  )
-  .on('confirmation', async function(_, receipt) {
-    log(
-      'Staking transaction: ' +
-        receipt.transactionHash +
-        ' for proposal: ' +
-        proposalId +
-        ' was successfully confirmed.'
-    );
-    try {
-      await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-    } catch (error) {
-      const { response } = error;
-      let errStr = '';
-      if (response) {
-        const { request, ...errorObject } = response;
-        errStr = JSON.stringify(errorObject);
-      }
-      sendAlert('Failed to update Common: ' + network, 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
-    }
-  })
-  .on('error', console.error);
-}
-
-async function runStaking() {
-  // Currently limited to first 1000 open proposals.
-  const query = `{
-  proposals(where: {stage: "Queued"}, orderBy: createdAt, first: 1000) {
-      id
-      join {
-        id
-      }
-      fundingRequest {
-        id
-      }
-      stakes {
-        staker
-      }
-      votesFor
-      votesAgainst
-      stakesFor
-      stakesAgainst
-      votingMachine
-      join {
-        funding
-      }
-      fundingRequest {
-        amount
-      }
-      dao {
-        id
-        nativeReputation {
-          totalSupply
-        }
-      }
-      scheme {
-        numberOfBoostedProposals
-        numberOfPreBoostedProposals
-      }
-      gpQueue {
-        threshold
-      }
-      genesisProtocolParams {
-        minimumDaoBounty
-      }
-    }
-  }`
-  log("runStaking!")
-  try {
-      let { data } = (await axios.post(process.env.SUBGRAPH_URL, { query })).data
-      let { proposals } = data
-      for (let proposal of proposals) {
-        if ((proposal.join == null && proposal.fundingRequest == null) && proposal.genesisProtocolParams.minimumDaoBounty.toString() == '1') {
-          return;
-        }
-        let stakeAmount = 10; //web3.utils.toWei('10') // Comment out logic for now... web3.utils.toWei(getStakingInstructions(proposal, web3.eth.defaultAccount).toString())
-        if (stakeAmount !== 0) {
-          let version = require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0];
-          const GenesisProtocol = require('@daostack/migration-experimental/contracts/' + version + '/GenesisProtocol.json').abi;
-          let genesisProtocol = new web3.eth.Contract(GenesisProtocol, proposal.votingMachine);
-          stake(proposal.id, stakeAmount, genesisProtocol)
-        }
-      }
-  } catch (e) {
-      console.log(e)
-  }
-}
-
-async function runRedeemJoin() {
-  const query = `{
-    proposals(where: {join_not: null, stage: "Executed"}) {
-      id
-      stage
-      join {
-        reputationMinted
-      }
-      winningOutcome
-      scheme {
-        address
-        version
-      }
-    }
-  }`
-  let { data } = (await axios.post(process.env.SUBGRAPH_URL, { query })).data
-  await checkIfLowGas();
-  for (let proposal of data.proposals) {
-    if (proposal.join.reputationMinted !== "0" || proposal.winningOutcome == 'Fail') {
-      continue;
-    }
-    if (!require('@daostack/migration-experimental/contracts/' + proposal.scheme.version + '/Join.json')) {
-      return;
-    }
-    const Join = require('@daostack/migration-experimental/contracts/' + proposal.scheme.version + '/Join.json').abi;
-    let join = new web3.eth.Contract(Join, proposal.scheme.address);
-    join.methods
-    .redeemReputation(proposal.id)
-    .send(
-      {
-        from: web3.eth.defaultAccount,
-        gas: 300000,
-        gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
-        nonce: ++nonce
-      },
-      async function(error) {
-        if (error) {
-          log(error);
-        } else {
-          log('Redeem transaction for proposal: ' + proposal.id + ' was sent.');
-        }
-      }
-    )
-    .on('confirmation', async function(_, receipt) {
-      log(
-        'Join reputation redeem transaction: ' +
-          receipt.transactionHash +
-          ' for proposal: ' +
-          proposal.id +
-          ' was successfully confirmed.'
-      );
-      try {
-        await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-      } catch (error) {
-        const { response } = error;
-        let errStr = '';
-        if (response) {
-          const { request, ...errorObject } = response;
-          errStr = JSON.stringify(errorObject);
-        }
-        sendAlert('Failed to update Common: ' + network, 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
-      }
-    })
-    .on('error', console.error);
-    }
-}
-
 async function listenProposalsStateChanges(genesisProtocol) {
   let scanFromBlock = (await web3.eth.getBlockNumber()) - 518400; // 3 months
-  if (nonce === -1) {
-    nonce =
-      (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
-  }
+
   // Start listening to events
   genesisProtocol.events
     .StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
-      if (nonce === -1) {
-        nonce =
-          (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
-      }
-
       if (!error) {
         // Get the proposal and Genesis Protocol data
         let proposalId = events.returnValues._proposalId;
-        if (process.env.COMMON.toLowerCase() != 'false') {
-          try {
-            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4');
-          } catch (error) {
-            const { response } = error;
-            let errStr = '';
-            if (response) {
-              const { request, ...errorObject } = response;
-              errStr = JSON.stringify(errorObject);
-            }
-            sendAlert('Failed to update Common: ' + network, 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
-          }
-        }
         let proposalState = events.returnValues._proposalState;
         let proposal = await genesisProtocol.methods
           .proposals(proposalId)
@@ -267,6 +82,10 @@ async function listenProposalsStateChanges(genesisProtocol) {
               'returned as null'
           );
           return;
+        }
+
+        if (process.env.COMMON.toLowerCase() != 'false') {
+          callCommonUpdater(proposalId, null)
         }
 
         // Clear past timeouts if existed
@@ -333,7 +152,7 @@ async function listenProposalsStateChanges(genesisProtocol) {
           }
         } else if (proposalState === 2 && proposal.state === 2) {
           if (process.env.COMMON.toLowerCase() != 'false') {
-            runRedeemJoin();
+            runRedeemJoin(proposalId, web3, await getGasPrice());
           }
         }
       } else {
@@ -345,10 +164,6 @@ async function listenProposalsStateChanges(genesisProtocol) {
 
   genesisProtocol.events
     .NewProposal({ fromBlock: scanFromBlock }, async (error, events) => {
-      if (nonce === -1) {
-        nonce =
-          (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
-      }
 
       if (!error) {
         let proposalId = events.returnValues._proposalId;
@@ -386,7 +201,6 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
   // Setup timer for the pre-boosting time
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
-    await checkIfLowGas();
 
     let proposal = await genesisProtocol.methods.proposals(proposalId).call();
     if (proposal.state === 4) {
@@ -398,7 +212,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
             from: web3.eth.defaultAccount,
             gas: 300000,
             gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
-            nonce: ++nonce
+            nonce: (await getNonce(web3))
           },
           function(error, transactionHash) {
             if (!error) {
@@ -428,17 +242,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
               ' was successfully confirmed.'
           );
           if (process.env.COMMON.toLowerCase() != 'false') {
-            try {
-              await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-            } catch (error) {
-              const { response } = error;
-              let errStr = '';
-              if (response) {
-                const { request, ...errorObject } = response;
-                errStr = JSON.stringify(errorObject);
-              }
-              sendAlert('Failed to update Common: ' + network, 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
-            }
+            callCommonUpdater(proposalId, receipt.blockNumber);
           }
         })
         .on('error', console.error);
@@ -449,7 +253,6 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
 async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
-    await checkIfLowGas();
     log(
       'Proposal: ' + proposalId + ' has expired. Attempting to redeem proposal.'
     );
@@ -476,8 +279,8 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
     }
     // Check if can close the proposal as expired and claim the bounty
     let failed = false;
-    let expirationCallBounty = await genesisProtocol.methods
-      .executeBoosted(proposalId)
+    let executable = await genesisProtocol.methods
+      .execute(proposalId)
       .call()
       .catch(error => {
         log(
@@ -490,10 +293,9 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       });
     if (
       !failed &&
-      expirationCallBounty !== null
+      executable
     ) {
       if ((data.proposal.scheme.name === "Join" && process.env.COMMON.toLowerCase() != 'false') && data.proposal.winningOutcome != 'Fail') {
-        await checkIfLowGas();
         const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.6/Redeemer.json').abi;
         let migration = DAOstackMigration.migration(network);
         let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.6'].Redeemer);
@@ -504,7 +306,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
             from: web3.eth.defaultAccount,
             gas: 600000,
             gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
-            nonce: ++nonce
+            nonce: (await getNonce(web3))
           },
           async function(error) {
             if (error) {
@@ -523,17 +325,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
               ' was successfully confirmed.'
           );
           if (process.env.COMMON.toLowerCase() != 'false') {
-            try {
-              await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-            } catch (error) {
-              const { response } = error;
-              let errStr = '';
-              if (response) {
-                const { request, ...errorObject } = response;
-                errStr = JSON.stringify(errorObject);
-              }
-              sendAlert('Failed to update Common: ' + network, 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
-            }
+            callCommonUpdater(proposalId, receipt.blockNumber);
           }
         })
         .on('error', console.error);
@@ -546,7 +338,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
             from: web3.eth.defaultAccount,
             gas: 300000,
             gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
-            nonce: ++nonce
+            nonce: (await getNonce(web3))
           },
           async function(error) {
             if (error) {
@@ -569,17 +361,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
               ' was successfully confirmed.'
           );
           if (process.env.COMMON.toLowerCase() != 'false') {
-            try {
-              await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-            } catch (error) {
-              const { response } = error;
-              let errStr = '';
-              if (response) {
-                const { request, ...errorObject } = response;
-                errStr = JSON.stringify(errorObject);
-              }
-              sendAlert('Failed to update Common: ' + network, 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
-            }
+            callCommonUpdater(proposalId, receipt.blockNumber);
           }
         })
         .on('error', console.error);
@@ -599,7 +381,6 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
 async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
   activeTimers[proposalId] = setTimeout(async () => {
     activeTimers[proposalId] = undefined;
-    await checkIfLowGas();
 
     log(
       'Proposal: ' +
@@ -607,9 +388,9 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
         ' has expired in queue. Attempting to execute proposal.'
     );
 
-    // Check if can close the proposal as expired and claim the bounty
+    // Check if can close the proposal as expired
 
-    // Close the proposal as expired and claim the bounty
+    // Close the proposal as expired
     await genesisProtocol.methods
       .execute(proposalId)
       .send(
@@ -617,7 +398,7 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
           from: web3.eth.defaultAccount,
           gas: 300000,
           gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
-          nonce: ++nonce
+          nonce: (await getNonce(web3))
         },
         async function(error) {
           if (error) {
@@ -634,17 +415,7 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
             ' was successfully confirmed.'
         );
         if (process.env.COMMON.toLowerCase() != 'false') {
-          try {
-            await axios.get(process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4');
-          } catch (error) {
-            const { response } = error;
-            let errStr = '';
-            if (response) {
-              const { request, ...errorObject } = response;
-              errStr = JSON.stringify(errorObject);
-            }
-            sendAlert('Failed to update Common: ' + network, 'Error calling Common URL: ' + process.env.COMMON_UPDATING_URL + '?proposalId=' + proposalId + '?blockNumber=' + receipt.blockNumber + '&retries=4\nError: ' + error + '\nDetails: ' + errStr);
-          }
+          callCommonUpdater(proposalId, receipt.blockNumber);
         }
       })
       .on('error', console.error);
@@ -678,52 +449,6 @@ async function retryExecuteProposal(genesisProtocol, proposalId, error) {
   } else {
     log('Proposal: ' + proposalId + ' was execute.');
   }
-}
-
-async function listenProposalBountyRedeemed(genesisProtocol) {
-  let fromBlock = await web3.eth.getBlockNumber();
-  genesisProtocol.events
-    .ExpirationCallBounty(
-      {
-        fromBlock
-      },
-      async (error, events) => {
-        if (!error) {
-          let proposalId = events.returnValues._proposalId;
-          let beneficiary = events.returnValues._beneficiary;
-          let amount = events.returnValues._amount;
-          clearTimer(proposalId);
-          redeemedProposals[proposalId] = {
-            beneficiary,
-            amount
-          };
-          if (
-            web3.eth.defaultAccount.toLowerCase() === beneficiary.toLowerCase()
-          ) {
-            log(
-              'Proposal: ' +
-                proposalId +
-                ' has expired and was successfully executed: ' +
-                events.transactionHash +
-                '\nReward received for execution: ' +
-                web3.utils.fromWei(amount.toString()) +
-                ' GEN'
-            );
-          } else {
-            log(
-              'Proposal: ' +
-                proposalId +
-                ' was redeemed by another account: ' +
-                beneficiary +
-                '\nReward received for execution: ' +
-                web3.utils.fromWei(amount.toString()) +
-                ' GEN'
-            );
-          }
-        }
-      }
-    )
-    .on('error', console.error);
 }
 
 // Timer Delay calculator for expiration in Queue
@@ -830,13 +555,12 @@ async function startBot() {
   // Setup Genesis Protocol
   let migration = DAOstackMigration.migration(network);
   let activeVMs = [];
-  let unsupportedVersions = ["0.1.2-rc.0", "0.1.2-rc.1", "0.1.2-rc.2", "0.1.2-rc.3", "0.1.2-rc.4"];
   
   for (let version in migration.package) {
     // if (version !== require('./package.json').dependencies['@daostack/migration-experimental'].split('-v')[0]) {
     //   continue;
     // }
-    if (unsupportedVersions.indexOf(version) !== -1) {
+    if (UNSUPPORTED_VERSIONS.indexOf(version) !== -1) {
       continue;
     }
     const GenesisProtocol = require('@daostack/migration-experimental/contracts/' +
@@ -858,7 +582,6 @@ async function startBot() {
     );
 
     await listenProposalsStateChanges(genesisProtocol);
-    await listenProposalBountyRedeemed(genesisProtocol);
   }
   setTimeout(restart, 1000 * 60 * 60 * 6);
   await checkIfLowGas();
@@ -867,17 +590,17 @@ async function startBot() {
   }
   const STAKING_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
   stakingBotTimerId = setInterval(
-    runStaking,
+    async function() {
+      runStaking(web3, await getGasPrice());
+      await checkIfLowGas();
+    },
     STAKING_TIMER_INTERVAL
   );
 
-  runRedeemJoin();
+  runRedeemJoin(null, web3, await getGasPrice());
 }
 
 if (require.main === module) {
-  module.exports = {
-    stake
-  };
   startBot().catch(err => {
     console.log(err);
   });
