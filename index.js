@@ -369,10 +369,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
     } else {
       log(
         'Failed to execute proposal:' +
-          proposalId +
-          ' for ' +
-          expirationCallBounty +
-          ' GEN'
+          proposalId
       );
     }
   }, timerDelay);
