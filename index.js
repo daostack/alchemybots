@@ -10,6 +10,8 @@ require('dotenv').config();
 const axios = require('axios')
 axios.defaults.timeout = 30000;
 
+const RETRY_EXECUTE_INTERVAL = 20000;
+
 const DXDAO_AVATAR_ADDRESS = '0x519b70055af55a007110b4ff99b0ea33071c720a';
 
 let network = process.env.NETWORK;
@@ -307,7 +309,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
               ? retriedCount[proposalId]++
               : (retriedCount[proposalId] = 1);
             await retryExecuteProposal(genesisProtocol, proposalId, error);
-          }, 20000);
+          }, RETRY_EXECUTE_INTERVAL);
         }
       )
       .on('confirmation', function(_, receipt) {
