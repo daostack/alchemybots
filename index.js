@@ -10,23 +10,30 @@ require('dotenv').config();
 const axios = require('axios')
 axios.defaults.timeout = 30000;
 
+const DXDAO_AVATAR_ADDRESS = '0x519b70055af55a007110b4ff99b0ea33071c720a';
+
 let network = process.env.NETWORK;
 let privateKey = process.env.PRIVATE_KEY;
-let dxdaoPrivateKey = process.env.DX_DAO_PRIVATE_KEY;
 let web3WSProvider = process.env.WEB3_WS_PROVIDER;
 let gasPrice = process.env.GAS_PRICE;
 let GRAPH_NODE_SUBGRAPH_URL = process.env.GRAPH_NODE_SUBGRAPH_URL;
-let nonce = -1;
 
 // Setting up Web3 instance
 const Web3 = require('web3');
 const web3 = new Web3(new Web3.providers.WebsocketProvider(web3WSProvider));
 let account = web3.eth.accounts.privateKeyToAccount(privateKey);
-let dxdaoAccount = web3.eth.accounts.privateKeyToAccount(dxdaoPrivateKey);
 web3.eth.accounts.wallet.add(account);
-web3.eth.accounts.wallet.add(dxdaoAccount);
 web3.eth.defaultAccount = account.address;
-let dxdaoAddress = dxdaoAccount.address;
+
+let INDEPENDENT_DAOS = {}
+INDEPENDENT_DAOS[DXDAO_AVATAR_ADDRESS] = process.env.DX_DAO_PRIVATE_KEY
+
+for (let avatar of Object.keys(INDEPENDENT_DAOS)) {
+  let indDAOAccount = web3.eth.accounts.privateKeyToAccount(INDEPENDENT_DAOS[avatar]);
+  web3.eth.accounts.wallet.add(indDAOAccount);
+  INDEPENDENT_DAOS[avatar] = indDAOAccount.address;
+}
+
 
 async function getTxParams(tx, genesisProtocol, proposalId) {
   const query = `{
@@ -53,11 +60,11 @@ async function getTxParams(tx, genesisProtocol, proposalId) {
 
   let ethGasStationPrices = (await axios.get('https://ethgasstation.info/api/ethgasAPI.json')).data
   let txGasPrice =  web3.utils.toWei(
-    (dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? ((ethGasStationPrices.fastest / 10) + 30) : gasPrice).toString(),
+    (dao in INDEPENDENT_DAOS ? ((ethGasStationPrices.fastest / 10) + 30) : gasPrice).toString(),
     'gwei'
   )
 
-  let txFrom = dao === '0x519b70055af55a007110b4ff99b0ea33071c720a' ? dxdaoAddress : web3.eth.defaultAccount;
+  let txFrom = dao in INDEPENDENT_DAOS ? INDEPENDENT_DAOS[dao] : web3.eth.defaultAccount;
 
   let txNonce = (await web3.eth.getTransactionCount(txFrom, 'pending'));
 
@@ -65,17 +72,13 @@ async function getTxParams(tx, genesisProtocol, proposalId) {
   const blockLimit = (await web3.eth.getBlock('latest')).gasLimit
   try {
     gas = (await tx.estimateGas())
-    if (gas * 1.5 < blockLimit - 100000) {
-      gas *= 1.5
+    if (gas * 2 < blockLimit - 100000) {
+      gas *= 2
       gas = parseInt(gas)
     } else {
       gas = blockLimit - 100000
     }
   } catch (error) {
-    if (error.toString().indexOf('always failing transaction') !== -1) {
-      log('Skipping transaction for proposal: ' + proposalId + ' reason: ' + error)
-      return null
-    }
     gas = blockLimit - 100000
     if (gas < 9000000) {
       gas = 9000000;
@@ -91,9 +94,6 @@ async function getTxParams(tx, genesisProtocol, proposalId) {
 
 // List all active timers by proposalId
 let activeTimers = {};
-
-// List of all redeemed proposals
-let redeemedProposals = {};
 
 const retryLimit = 5;
 // List of all retries of proposals executions
@@ -112,11 +112,6 @@ async function listenProposalsStateChanges(genesisProtocol) {
   // Start listening to events
   genesisProtocol.events
     .StateChange({ fromBlock: scanFromBlock }, async (error, events) => {
-      if (nonce === -1) {
-        nonce =
-          (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
-      }
-
       if (!error) {
         // Get the proposal and Genesis Protocol data
         let proposalId = events.returnValues._proposalId;
@@ -206,11 +201,6 @@ async function listenProposalsStateChanges(genesisProtocol) {
 
   genesisProtocol.events
     .NewProposal({ fromBlock: scanFromBlock }, async (error, events) => {
-      if (nonce === -1) {
-        nonce =
-          (await web3.eth.getTransactionCount(web3.eth.defaultAccount)) - 1;
-      }
-
       if (!error) {
         let proposalId = events.returnValues._proposalId;
         let proposal = await genesisProtocol.methods
@@ -299,66 +289,37 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
     log(
       'Proposal: ' + proposalId + ' has expired. Attempting to redeem proposal.'
     );
-
-    // Check if can close the proposal as expired and claim the bounty
-    let failed = false;
-    let expirationCallBounty = await genesisProtocol.methods
-      .executeBoosted(proposalId)
-      .call()
-      .catch(error => {
-        log(
-          'Could not call execute Proposal: ' +
-            proposalId +
-            '. error returned: ' +
-            extractJSON(error.toString())[0].message
-        );
-        failed = true;
-      });
-    if (
-      !failed &&
-      expirationCallBounty !== null &&
-      Number(web3.utils.fromWei(expirationCallBounty.toString())) > 0
-    ) {
-      // Close the proposal as expired and claim the bounty
-      let executeTx = await genesisProtocol.methods.execute(proposalId)
-      let params = await getTxParams(executeTx, genesisProtocol, proposalId);
-      if (params == null) {
-        log('Skipping proposal: ' + proposalId + ' as it was not found on the subgraph')
-        return
-      }
-      executeTx.send(
-        params,
-          async function(error) {
-            if (error) {
-              log(error);
-            }
-            activeTimers[proposalId] = setTimeout(async () => {
-              retriedCount[proposalId] !== undefined
-                ? retriedCount[proposalId]++
-                : (retriedCount[proposalId] = 1);
-              await retryExecuteProposal(genesisProtocol, proposalId, error);
-            }, 10000);
-          }
-        )
-        .on('confirmation', function(_, receipt) {
-          log(
-            'Execution transaction: ' +
-              receipt.transactionHash +
-              ' for proposal: ' +
-              proposalId +
-              ' was successfully confirmed.'
-          );
-        })
-        .on('error', console.error);
-    } else {
-      log(
-        'Failed to execute proposal:' +
-          proposalId +
-          ' for ' +
-          expirationCallBounty +
-          ' GEN'
-      );
+  
+    let executeTx = await genesisProtocol.methods.execute(proposalId)
+    let params = await getTxParams(executeTx, genesisProtocol, proposalId);
+    if (params == null) {
+      log('Skipping proposal: ' + proposalId + ' as it was not found on the subgraph')
+      return
     }
+    executeTx.send(
+      params,
+        async function(error) {
+          if (error) {
+            log(error);
+          }
+          activeTimers[proposalId] = setTimeout(async () => {
+            retriedCount[proposalId] !== undefined
+              ? retriedCount[proposalId]++
+              : (retriedCount[proposalId] = 1);
+            await retryExecuteProposal(genesisProtocol, proposalId, error);
+          }, 20000);
+        }
+      )
+      .on('confirmation', function(_, receipt) {
+        log(
+          'Execution transaction: ' +
+            receipt.transactionHash +
+            ' for proposal: ' +
+            proposalId +
+            ' was successfully confirmed.'
+        );
+      })
+      .on('error', console.error);
   }, timerDelay);
 }
 
@@ -416,66 +377,13 @@ async function retryExecuteProposal(genesisProtocol, proposalId, error) {
     if (retriedCount[proposalId] <= retryLimit) {
       log('Retrying...');
       retriedCount[proposalId]++;
-      let timerDelay = await calculateTimerDelay(
-        genesisProtocol,
-        proposalId,
-        proposal
-      );
-      if (timerDelay !== -1) {
-        setExecutionTimer(genesisProtocol, proposalId, timerDelay + 5000);
-      }
+      setExecutionTimer(genesisProtocol, proposalId, 1);
     } else {
       log('Too many retries, proposal execution abandoned.');
     }
   } else {
     log('Proposal: ' + proposalId + ' was execute.');
   }
-}
-
-async function listenProposalBountyRedeemed(genesisProtocol) {
-  let fromBlock = await web3.eth.getBlockNumber();
-  genesisProtocol.events
-    .ExpirationCallBounty(
-      {
-        fromBlock
-      },
-      async (error, events) => {
-        if (!error) {
-          let proposalId = events.returnValues._proposalId;
-          let beneficiary = events.returnValues._beneficiary;
-          let amount = events.returnValues._amount;
-          clearTimer(proposalId);
-          redeemedProposals[proposalId] = {
-            beneficiary,
-            amount
-          };
-          if (
-            web3.eth.defaultAccount.toLowerCase() === beneficiary.toLowerCase()
-          ) {
-            log(
-              'Proposal: ' +
-                proposalId +
-                ' has expired and was successfully executed: ' +
-                events.transactionHash +
-                '\nReward received for execution: ' +
-                web3.utils.fromWei(amount.toString()) +
-                ' GEN'
-            );
-          } else {
-            log(
-              'Proposal: ' +
-                proposalId +
-                ' was redeemed by another account: ' +
-                beneficiary +
-                '\nReward received for execution: ' +
-                web3.utils.fromWei(amount.toString()) +
-                ' GEN'
-            );
-          }
-        }
-      }
-    )
-    .on('error', console.error);
 }
 
 // Timer Delay calculator for expiration in Queue
@@ -606,7 +514,6 @@ async function startBot() {
     );
 
     await listenProposalsStateChanges(genesisProtocol);
-    await listenProposalBountyRedeemed(genesisProtocol);
   }
   setTimeout(restart, 1000 * 60 * 60 * 6);
 
