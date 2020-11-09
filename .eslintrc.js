@@ -10,7 +10,6 @@ module.exports = {
   },
   rules: {
     "eol-last": 2,
-    eqeqeq: "error",
     "no-console": 0,
     "no-var-requires": 0
   }

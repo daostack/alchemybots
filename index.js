@@ -50,7 +50,7 @@ async function getTxParams(tx, genesisProtocol, proposalId) {
     if (data.proposal.id.toLowerCase() != proposalId.toLowerCase()) {
       throw Error('Proposal was not found')
     }
-  } catch {
+  } catch(e) {
     return null
   }
   
@@ -102,6 +102,7 @@ const retryLimit = 5;
 let retriedCount = {};
 
 // Subgraph Monitoring Bot timer ID
+// eslint-disable-next-line no-unused-vars
 let subgraphMonitorTimerId;
 
 let lastUnhandledRejectionErrorTime = 0;
