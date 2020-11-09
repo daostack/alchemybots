@@ -46,6 +46,8 @@ const UNSUPPORTED_VERSIONS = [
   "0.1.2-rc.0", "0.1.2-rc.1", "0.1.2-rc.2", "0.1.2-rc.3", "0.1.2-rc.4"
 ];
 
+const STAKING_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 ////////////// Functions //////////////
 
 // Get gas price to use
@@ -585,14 +587,16 @@ async function startBot() {
   if (process.env.COMMON.toLowerCase() == 'false') {
     return;
   }
-  const STAKING_TIMER_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  stakingBotTimerId = setInterval(
-    async function() {
-      runStaking(web3, await getGasPrice());
-      await checkIfLowGas();
-    },
-    STAKING_TIMER_INTERVAL
-  );
+
+  if (process.env.COMMON.toLowerCase() != 'false') {
+    stakingBotTimerId = setInterval(
+      async function() {
+        runStaking(web3, await getGasPrice());
+        await checkIfLowGas();
+      },
+      STAKING_TIMER_INTERVAL
+    );
+  }
 
   runRedeemJoin(null, web3, await getGasPrice());
 }

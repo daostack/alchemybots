@@ -185,6 +185,5 @@ async function stake(proposalId, stakeAmount, genesisProtocol, web3, gasPrice) {
 module.exports = {
     callCommonUpdater,
     runRedeemJoin,
-    stake,
     runStaking
 };
