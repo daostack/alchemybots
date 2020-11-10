@@ -181,7 +181,11 @@ async function stake(proposalId, stakeAmount, genesisProtocol, web3, gasPrice) {
     }
   }
 
-  async function redeemJoinCommon(web3, redeemer, data, genesisProtocol, proposalId, gasPrice) {
+  async function redeemJoinCommon(web3, data, genesisProtocol, proposalId, gasPrice) {
+    const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.6/Redeemer.json').abi;
+    const DAOstackMigration = require('@daostack/migration-experimental');
+    let migration = DAOstackMigration.migration(network);
+    let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.6'].Redeemer);
     redeemer.methods
         .redeemJoin(data.proposal.scheme.address, genesisProtocol.address, proposalId, web3.eth.defaultAccount)
         .send(

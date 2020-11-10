@@ -294,10 +294,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       executable
     ) {
       if ((data.proposal.scheme.name === "Join" && process.env.COMMON.toLowerCase() != 'false') && data.proposal.winningOutcome != 'Fail') {
-        const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.6/Redeemer.json').abi;
-        let migration = DAOstackMigration.migration(network);
-        let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.6'].Redeemer);
-        await redeemJoinCommon(web3, redeemer, data, genesisProtocol, proposalId, await getGasPrice());
+        await redeemJoinCommon(web3, data, genesisProtocol, proposalId, await getGasPrice());
       } else {
         // Close the proposal as expired and claim the bounty
         await genesisProtocol.methods
