@@ -9,7 +9,8 @@ let {
 const {
   callCommonUpdater,
   runRedeemJoin,
-  runStaking
+  runStaking,
+  redeemJoinCommon
 } = require('./common.js')
 require('dotenv').config();
 
@@ -33,14 +34,9 @@ const DAOstackMigration = require('@daostack/migration-experimental');
 // List all active timers by proposalId
 let activeTimers = {};
 
-// List of all redeemed proposals
-let redeemedProposals = {};
-
 const retryLimit = 5;
 // List of all retries of proposals executions
 let retriedCount = {};
-
-let stakingBotTimerId;
 
 const UNSUPPORTED_VERSIONS = [
   "0.1.2-rc.0", "0.1.2-rc.1", "0.1.2-rc.2", "0.1.2-rc.3", "0.1.2-rc.4"
@@ -301,36 +297,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
         const Redeemer = require('@daostack/migration-experimental/contracts/0.1.2-rc.6/Redeemer.json').abi;
         let migration = DAOstackMigration.migration(network);
         let redeemer = new web3.eth.Contract(Redeemer, migration.package['0.1.2-rc.6'].Redeemer);
-        redeemer.methods
-        .redeemJoin(data.proposal.scheme.address, genesisProtocol.address, proposalId, web3.eth.defaultAccount)
-        .send(
-          {
-            from: web3.eth.defaultAccount,
-            gas: 600000,
-            gasPrice: web3.utils.toWei(await getGasPrice(), 'gwei'),
-            nonce: (await getNonce(web3))
-          },
-          async function(error) {
-            if (error) {
-              log(error);
-            } else {
-              log('Redeem transaction for proposal: ' + proposalId + ' was sent.');
-            }
-          }
-        )
-        .on('confirmation', async function(_, receipt) {
-          log(
-            'Join reputation redeem transaction: ' +
-              receipt.transactionHash +
-              ' for proposal: ' +
-              proposalId +
-              ' was successfully confirmed.'
-          );
-          if (process.env.COMMON.toLowerCase() != 'false') {
-            callCommonUpdater(proposalId, receipt.blockNumber);
-          }
-        })
-        .on('error', console.error);
+        await redeemJoinCommon(web3, redeemer, data, genesisProtocol, proposalId, await getGasPrice());
       } else {
         // Close the proposal as expired and claim the bounty
         await genesisProtocol.methods
@@ -588,15 +555,13 @@ async function startBot() {
     return;
   }
 
-  if (process.env.COMMON.toLowerCase() != 'false') {
-    stakingBotTimerId = setInterval(
-      async function() {
-        runStaking(web3, await getGasPrice());
-        await checkIfLowGas();
-      },
-      STAKING_TIMER_INTERVAL
-    );
-  }
+  setInterval(
+    async function() {
+      runStaking(web3, await getGasPrice());
+      await checkIfLowGas();
+    },
+    STAKING_TIMER_INTERVAL
+  );
 
   runRedeemJoin(null, web3, await getGasPrice());
 }

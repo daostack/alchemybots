@@ -181,8 +181,42 @@ async function stake(proposalId, stakeAmount, genesisProtocol, web3, gasPrice) {
     }
   }
 
+  async function redeemJoinCommon(web3, redeemer, data, genesisProtocol, proposalId, gasPrice) {
+    redeemer.methods
+        .redeemJoin(data.proposal.scheme.address, genesisProtocol.address, proposalId, web3.eth.defaultAccount)
+        .send(
+          {
+            from: web3.eth.defaultAccount,
+            gas: 600000,
+            gasPrice: web3.utils.toWei(gasPrice, 'gwei'),
+            nonce: (await getNonce(web3))
+          },
+          async function(error) {
+            if (error) {
+              log(error);
+            } else {
+              log('Redeem transaction for proposal: ' + proposalId + ' was sent.');
+            }
+          }
+        )
+        .on('confirmation', async function(_, receipt) {
+          log(
+            'Join reputation redeem transaction: ' +
+              receipt.transactionHash +
+              ' for proposal: ' +
+              proposalId +
+              ' was successfully confirmed.'
+          );
+          if (process.env.COMMON.toLowerCase() != 'false') {
+            callCommonUpdater(proposalId, receipt.blockNumber);
+          }
+        })
+        .on('error', console.error);
+  }
+
 
 module.exports = {
+    redeemJoinCommon,
     callCommonUpdater,
     runRedeemJoin,
     runStaking
