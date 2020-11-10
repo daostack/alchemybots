@@ -88,10 +88,24 @@ function log(message) {
   console.log(logMsg);
 }
 
+let lastNonceUsed = 0
+async function getNonce(web3) {
+  if (lastNonceUsed == 0) {
+    lastNonceUsed = (await web3.eth.getTransactionCount(web3.eth.defaultAccount, 'pending'))
+  }
+  let newNonce = (await web3.eth.getTransactionCount(web3.eth.defaultAccount, 'pending'))
+  if (newNonce <= lastNonceUsed) {
+    newNonce = lastNonceUsed++
+  }
+
+  return newNonce;
+}
+
 module.exports = {
     sendAlert,
     extractJSON,
     convertMillisToTime,
-    log
+    log,
+    getNonce
 };
   
