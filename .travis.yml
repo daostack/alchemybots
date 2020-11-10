@@ -1,0 +1,14 @@
+dist: trusty
+
+language: node_js
+
+node_js:
+  - "10.15.0"
+
+before_install:
+
+install:
+  - npm ci
+
+script:
+  - npm run lint

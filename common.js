@@ -18,6 +18,7 @@ async function callCommonUpdater(proposalId, blockNumber) {
         const { response } = error;
         let errStr = '';
         if (response) {
+        // eslint-disable-next-line no-unused-vars
         const { request, ...errorObject } = response;
         errStr = JSON.stringify(errorObject);
         }
