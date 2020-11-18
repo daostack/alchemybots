@@ -250,6 +250,7 @@ async function setPreBoostingTimer(genesisProtocol, proposalId, timerDelay) {
       log('Skipping proposal: ' + proposalId + ' as it was not found on the subgraph')
       return
     }
+    executeTx = await genesisProtocol.methods.execute(proposalId)
     executeTx.send(
           params,
           function(error, transactionHash) {
@@ -299,6 +300,7 @@ async function setExecutionTimer(genesisProtocol, proposalId, timerDelay) {
       log('Skipping proposal: ' + proposalId + ' as it was not found on the subgraph')
       return
     }
+    executeTx = await genesisProtocol.methods.execute(proposalId)
     executeTx.send(
       params,
         async function(error) {
@@ -346,6 +348,7 @@ async function setExpirationTimer(genesisProtocol, proposalId, timerDelay) {
       log('Skipping proposal: ' + proposalId + ' as it was not found on the subgraph')
       return
     }
+    executeTx = await genesisProtocol.methods.execute(proposalId)
     executeTx.send(
         params,
         async function(error) {
